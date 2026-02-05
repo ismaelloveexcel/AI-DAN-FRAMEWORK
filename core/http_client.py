@@ -7,6 +7,7 @@ to improve performance and reduce connection overhead.
 
 import httpx
 import asyncio
+import threading
 from typing import Optional, Dict, Any
 from contextlib import asynccontextmanager
 import logging
@@ -18,7 +19,7 @@ class HTTPClientManager:
     """Singleton HTTP client manager with connection pooling."""
     
     _instance: Optional['HTTPClientManager'] = None
-    _lock = asyncio.Lock()
+    _lock = threading.Lock()  # Use threading.Lock for synchronous singleton pattern
     _async_client: Optional[httpx.AsyncClient] = None
     _sync_client: Optional[httpx.Client] = None
     
