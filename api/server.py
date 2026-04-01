@@ -23,7 +23,7 @@ app = FastAPI(
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
-    allow_credentials=True,
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -147,7 +147,9 @@ async def aidan_chat(
         system += f"\n\nContext: {req.context}"
 
     response_text = call_openai(system, req.message)
-    mode = "live" if os.getenv("OPENAI_API_KEY", "").startswith("sk-") else "mock"
+    api_key = os.getenv("OPENAI_API_KEY", "")
+    # Keep mode detection consistent with call_openai(): treat missing or placeholder keys as mock.
+    mode = "live" if api_key and api_key != "your-openai-key-here" else "mock"
 
     return ChatResponse(
         response=response_text,
@@ -260,4 +262,4 @@ async def aidan_weekly_review(
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run("server:app", host="0.0.0.0", port=8000, reload=False)
+    uvicorn.run(app, host="0.0.0.0", port=8000, reload=False)
