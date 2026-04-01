@@ -9,22 +9,59 @@ This module tests both directions of n8n integration:
 import pytest
 import os
 import json
+import importlib
 from unittest.mock import Mock, patch, MagicMock
 from datetime import datetime
 
+from core.config import reload_settings
+
 # Set mock mode for testing
 os.environ['USE_MOCK_KB'] = 'true'
+
+
+@pytest.fixture
+def api_app():
+    """Reload api_server module so env-driven settings are re-evaluated."""
+    os.environ.setdefault("ENABLE_AUTH", "false")
+    os.environ.setdefault("FRAMEWORK_API_KEY", "default-test-key")
+    os.environ.setdefault("API__ENABLE_AUTH", "false")
+    os.environ.setdefault("API__API_KEY", "default-test-key")
+    import api_server
+    return importlib.reload(api_server).app
 
 
 class TestN8NWebhookEndpoints:
     """Tests for n8n → Framework integration (Direction 1)"""
 
     @pytest.fixture
-    def test_client(self):
+    def test_client(self, api_app):
         """Create a test client for the FastAPI app"""
         from fastapi.testclient import TestClient
-        from api_server import app
-        return TestClient(app)
+        return TestClient(api_app)
+
+    @pytest.fixture(autouse=True)
+    def reset_auth_env(self):
+        """Ensure auth env is deterministic across tests."""
+        previous = {
+            "ENABLE_AUTH": os.environ.get("ENABLE_AUTH"),
+            "FRAMEWORK_API_KEY": os.environ.get("FRAMEWORK_API_KEY"),
+            "API__ENABLE_AUTH": os.environ.get("API__ENABLE_AUTH"),
+            "API__API_KEY": os.environ.get("API__API_KEY"),
+        }
+
+        os.environ["ENABLE_AUTH"] = "false"
+        os.environ["FRAMEWORK_API_KEY"] = "default-test-key"
+        os.environ["API__ENABLE_AUTH"] = "false"
+        os.environ["API__API_KEY"] = "default-test-key"
+        reload_settings()
+        yield
+
+        for key, value in previous.items():
+            if value is None:
+                os.environ.pop(key, None)
+            else:
+                os.environ[key] = value
+        reload_settings()
 
     @pytest.fixture
     def api_key_headers(self):
@@ -100,7 +137,15 @@ class TestN8NWebhookEndpoints:
 
     def test_n8n_webhook_requires_auth(self, test_client):
         """Test that webhook requires API key when auth is enabled"""
-        # This test depends on ENABLE_AUTH being true
+        previous_enable_auth = os.environ.get("ENABLE_AUTH")
+        previous_api_key = os.environ.get("FRAMEWORK_API_KEY")
+        previous_nested_auth = os.environ.get("API__ENABLE_AUTH")
+        previous_nested_api_key = os.environ.get("API__API_KEY")
+        os.environ["ENABLE_AUTH"] = "true"
+        os.environ["FRAMEWORK_API_KEY"] = "auth-test-key"
+        os.environ["API__ENABLE_AUTH"] = "true"
+        os.environ["API__API_KEY"] = "auth-test-key"
+        reload_settings()
         payload = {
             "workflow_id": "test-workflow",
             "trigger_type": "sales",
@@ -108,20 +153,72 @@ class TestN8NWebhookEndpoints:
         }
 
         response = test_client.post("/n8n/webhook", json=payload)
+        assert response.status_code == 403
 
-        # Should fail without API key if auth is enabled
-        if os.getenv("ENABLE_AUTH", "false").lower() == "true":
-            assert response.status_code == 403
+        if previous_enable_auth is None:
+            del os.environ["ENABLE_AUTH"]
+        else:
+            os.environ["ENABLE_AUTH"] = previous_enable_auth
+        if previous_api_key is None:
+            del os.environ["FRAMEWORK_API_KEY"]
+        else:
+            os.environ["FRAMEWORK_API_KEY"] = previous_api_key
+        if previous_nested_auth is None:
+            del os.environ["API__ENABLE_AUTH"]
+        else:
+            os.environ["API__ENABLE_AUTH"] = previous_nested_auth
+        if previous_nested_api_key is None:
+            del os.environ["API__API_KEY"]
+        else:
+            os.environ["API__API_KEY"] = previous_nested_api_key
+        reload_settings()
+
+    def test_n8n_webhook_auth_disabled_allows_requests(self, test_client):
+        """Test that webhook allows requests when auth is disabled."""
+        previous_enable_auth = os.environ.get("ENABLE_AUTH")
+        previous_api_key = os.environ.get("FRAMEWORK_API_KEY")
+        previous_nested_auth = os.environ.get("API__ENABLE_AUTH")
+        previous_nested_api_key = os.environ.get("API__API_KEY")
+        os.environ["ENABLE_AUTH"] = "false"
+        os.environ["FRAMEWORK_API_KEY"] = "auth-test-key"
+        os.environ["API__ENABLE_AUTH"] = "false"
+        os.environ["API__API_KEY"] = "auth-test-key"
+        reload_settings()
+        payload = {
+            "workflow_id": "test-workflow",
+            "trigger_type": "sales",
+            "payload": {}
+        }
+
+        response = test_client.post("/n8n/webhook", json=payload)
+        assert response.status_code == 200
+
+        if previous_enable_auth is None:
+            del os.environ["ENABLE_AUTH"]
+        else:
+            os.environ["ENABLE_AUTH"] = previous_enable_auth
+        if previous_api_key is None:
+            del os.environ["FRAMEWORK_API_KEY"]
+        else:
+            os.environ["FRAMEWORK_API_KEY"] = previous_api_key
+        if previous_nested_auth is None:
+            del os.environ["API__ENABLE_AUTH"]
+        else:
+            os.environ["API__ENABLE_AUTH"] = previous_nested_auth
+        if previous_nested_api_key is None:
+            del os.environ["API__API_KEY"]
+        else:
+            os.environ["API__API_KEY"] = previous_nested_api_key
+        reload_settings()
 
 
 class TestSalesEndpoints:
     """Tests for Sales API endpoints"""
 
     @pytest.fixture
-    def test_client(self):
+    def test_client(self, api_app):
         from fastapi.testclient import TestClient
-        from api_server import app
-        return TestClient(app)
+        return TestClient(api_app)
 
     @pytest.fixture
     def api_key_headers(self):
@@ -179,10 +276,9 @@ class TestMarketingEndpoints:
     """Tests for Marketing API endpoints"""
 
     @pytest.fixture
-    def test_client(self):
+    def test_client(self, api_app):
         from fastapi.testclient import TestClient
-        from api_server import app
-        return TestClient(app)
+        return TestClient(api_app)
 
     @pytest.fixture
     def api_key_headers(self):
@@ -249,6 +345,21 @@ class TestN8NMCPTools:
         tool = N8NTriggerWorkflowTool()
         assert tool.name == "n8n Trigger Workflow Tool"
         assert "workflow" in tool.description.lower()
+
+    def test_n8n_execute_workflow_tool_initialization(self):
+        """Test N8NExecuteWorkflowTool has distinct name contract"""
+        from core.tools import N8NExecuteWorkflowTool
+
+        tool = N8NExecuteWorkflowTool()
+        assert tool.name == "n8n Execute Workflow Tool"
+        assert "workflow" in tool.description.lower()
+
+    def test_n8n_execute_workflow_tool_initialization(self):
+        """Test N8NExecuteWorkflowTool has unique stable name."""
+        from core.tools import N8NExecuteWorkflowTool
+
+        tool = N8NExecuteWorkflowTool()
+        assert tool.name == "n8n Execute Workflow Tool"
 
     def test_n8n_list_workflows_tool_initialization(self):
         """Test N8NListWorkflowsTool initializes correctly"""
@@ -358,15 +469,69 @@ class TestToolFactory:
             tool = get_tool_by_name(name)
             assert tool is not None, f"Tool {name} should be registered"
 
+    def test_create_mock_tool_dict_fallback(self):
+        """Ensure mock fallback dictionary uses function arguments."""
+        from core import tools as tools_module
+
+        previous = tools_module.CREWAI_AVAILABLE
+        tools_module.CREWAI_AVAILABLE = False
+        try:
+            tool = tools_module.create_mock_tool("sample tool", "sample description")
+            assert isinstance(tool, dict)
+            assert tool["name"] == "sample tool"
+            assert tool["description"] == "sample description"
+        finally:
+            tools_module.CREWAI_AVAILABLE = previous
+
+
+class TestAPIConfiguration:
+    """Tests for API config-driven auth and CORS behavior."""
+
+    @pytest.fixture
+    def test_client(self, api_app):
+        from fastapi.testclient import TestClient
+        return TestClient(api_app)
+
+    def test_cors_preflight_reflects_origin(self, test_client):
+        """When CORS is configured, preflight should return origin header."""
+        previous = os.environ.get("CORS_ORIGINS")
+        previous_nested = os.environ.get("API__CORS_ORIGINS")
+        os.environ["CORS_ORIGINS"] = "http://localhost:3000"
+        os.environ["API__CORS_ORIGINS"] = "http://localhost:3000"
+        reload_settings()
+        import importlib
+        import api_server
+        from fastapi.testclient import TestClient
+        dynamic_client = TestClient(importlib.reload(api_server).app)
+
+        response = dynamic_client.options(
+            "/health",
+            headers={
+                "Origin": "http://localhost:3000",
+                "Access-Control-Request-Method": "GET",
+            },
+        )
+        assert response.status_code in (200, 204)
+        assert response.headers.get("access-control-allow-origin") == "http://localhost:3000"
+
+        if previous is None:
+            del os.environ["CORS_ORIGINS"]
+        else:
+            os.environ["CORS_ORIGINS"] = previous
+        if previous_nested is None:
+            del os.environ["API__CORS_ORIGINS"]
+        else:
+            os.environ["API__CORS_ORIGINS"] = previous_nested
+        reload_settings()
+
 
 class TestBidirectionalFlow:
     """Integration tests for complete bidirectional flow"""
 
     @pytest.fixture
-    def test_client(self):
+    def test_client(self, api_app):
         from fastapi.testclient import TestClient
-        from api_server import app
-        return TestClient(app)
+        return TestClient(api_app)
 
     @pytest.fixture
     def api_key_headers(self):
