@@ -483,12 +483,13 @@ tests/
 ```python
 # tests/conftest.py
 import pytest
-from httpx import AsyncClient
+from httpx import AsyncClient, ASGITransport
 from api_server import app
 
 @pytest.fixture
 async def client():
-    async with AsyncClient(app=app, base_url="http://test") as client:
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
         yield client
 
 # tests/test_api_endpoints.py
