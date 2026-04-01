@@ -2,7 +2,7 @@
 
 ## Overview
 
-This directory contains the results of a comprehensive efficiency review of the JeweledTech Agentic Framework conducted on February 5, 2026.
+This repository contains the results of a comprehensive efficiency review of the JeweledTech Agentic Framework conducted on February 5, 2026.
 
 ## 📄 Documents Included
 
