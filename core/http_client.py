@@ -6,9 +6,8 @@ to improve performance and reduce connection overhead.
 """
 
 import httpx
-import asyncio
 import threading
-from typing import Optional, Dict, Any
+from typing import Optional
 from contextlib import asynccontextmanager
 import logging
 
