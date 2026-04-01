@@ -6,6 +6,9 @@ A simple, developer-friendly API server for creating and orchestrating AI agents
 This server demonstrates the core capabilities of the framework.
 """
 
+import asyncio
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI, HTTPException, Security, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import APIKeyHeader
@@ -23,16 +26,23 @@ logger = logging.getLogger(__name__)
 # Add the current directory to Python path
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
-# Import framework components
-from agents.examples import ResearchAgent, WriterAgent
-from agents.executive_chat import ExecutiveChatAgent
-from core.crew import CrewBuilder
+# Import framework components (agents are NOT instantiated here – see lazy factories below)
+from core.http_client import http_client_lifespan
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Manage application lifecycle: start up HTTP client pool, shut it down on exit."""
+    async with http_client_lifespan():
+        yield
+
 
 # Initialize FastAPI app
 app = FastAPI(
     title="JeweledTech Agentic Framework",
     description="Open-source framework for building multi-agent AI systems",
-    version="1.0.0"
+    version="1.0.0",
+    lifespan=lifespan,
 )
 
 # Add CORS middleware
@@ -62,10 +72,36 @@ async def verify_api_key(api_key: str = Security(api_key_header)) -> str:
         )
     return api_key
 
-# Initialize example agents
-research_agent = ResearchAgent()
-writer_agent = WriterAgent()
-executive_chat_agent = ExecutiveChatAgent()
+
+# ---------------------------------------------------------------------------
+# Lazy agent factories
+# Agents are heavy objects (they load LLMs, knowledge bases, tools).  Creating
+# them at import time blocks the API startup and makes testing harder.  Instead
+# we create each agent on first use and cache it for the process lifetime.
+# ---------------------------------------------------------------------------
+
+_agents: Dict[str, Any] = {}
+
+
+def _get_research_agent():
+    if "research" not in _agents:
+        from agents.examples import ResearchAgent
+        _agents["research"] = ResearchAgent()
+    return _agents["research"]
+
+
+def _get_writer_agent():
+    if "writer" not in _agents:
+        from agents.examples import WriterAgent
+        _agents["writer"] = WriterAgent()
+    return _agents["writer"]
+
+
+def _get_executive_chat_agent():
+    if "executive_chat" not in _agents:
+        from agents.executive_chat import ExecutiveChatAgent
+        _agents["executive_chat"] = ExecutiveChatAgent()
+    return _agents["executive_chat"]
 
 # Request/Response models
 class ResearchRequest(BaseModel):
@@ -190,11 +226,12 @@ def list_agents():
 async def research_topic(request: ResearchRequest):
     """Research a topic using the Research Agent"""
     try:
-        result = research_agent.research_topic(
+        result = await asyncio.to_thread(
+            _get_research_agent().research_topic,
             topic=request.topic,
-            depth=request.depth
+            depth=request.depth,
         )
-        
+
         return AgentResponse(
             agent="research_agent",
             task=f"Research '{request.topic}'",
@@ -209,13 +246,14 @@ async def research_topic(request: ResearchRequest):
 async def write_content(request: WritingRequest):
     """Generate written content using the Writer Agent"""
     try:
-        result = writer_agent.write_blog_post(
+        result = await asyncio.to_thread(
+            _get_writer_agent().write_blog_post,
             topic=request.topic,
             research_data=request.research_data,
             tone=request.tone,
-            word_count=request.word_count
+            word_count=request.word_count,
         )
-        
+
         return AgentResponse(
             agent="writer_agent",
             task=f"Write about '{request.topic}'",
@@ -231,33 +269,39 @@ async def collaborate_agents(request: CollaborativeRequest):
     """
     Demonstrate multi-agent collaboration.
     The research agent gathers information, then the writer agent creates content.
+    Both synchronous agent calls are offloaded to threads so the event loop
+    remains free to handle other requests.
     """
     try:
-        # Step 1: Research the topic
-        research_result = research_agent.research_topic(
+        # Step 1: Research the topic (non-blocking)
+        research_result = await asyncio.to_thread(
+            _get_research_agent().research_topic,
             topic=request.topic,
-            depth="comprehensive"
+            depth="comprehensive",
         )
-        
-        # Step 2: Create content based on research
+
+        # Step 2: Create content based on research (non-blocking)
         if request.output_type == "blog_post":
-            writing_result = writer_agent.write_blog_post(
+            writing_result = await asyncio.to_thread(
+                _get_writer_agent().write_blog_post,
                 topic=request.topic,
                 research_data=research_result["findings"],
                 tone="professional",
-                word_count=1000
+                word_count=1000,
             )
         elif request.output_type == "documentation":
-            writing_result = writer_agent.create_technical_documentation(
+            writing_result = await asyncio.to_thread(
+                _get_writer_agent().create_technical_documentation,
                 subject=request.topic,
-                specifications={"based_on": "research_findings"}
+                specifications={"based_on": "research_findings"},
             )
         else:
-            writing_result = writer_agent.summarize_content(
+            writing_result = await asyncio.to_thread(
+                _get_writer_agent().summarize_content,
                 content=research_result["findings"],
-                max_words=200
+                max_words=200,
             )
-        
+
         return {
             "collaboration": "research_and_write",
             "topic": request.topic,
@@ -279,17 +323,17 @@ async def create_crew(agent_ids: List[str], crew_name: str = "Custom Crew"):
     This demonstrates the crew orchestration capabilities.
     """
     try:
-        # Map agent IDs to actual agents
+        # Map agent IDs to lazy factories
         agent_map = {
-            "research_agent": research_agent,
-            "writer_agent": writer_agent
+            "research_agent": _get_research_agent,
+            "writer_agent": _get_writer_agent,
         }
-        
-        agents = [agent_map.get(aid) for aid in agent_ids if aid in agent_map]
-        
+
+        agents = [agent_map[aid]() for aid in agent_ids if aid in agent_map]
+
         if not agents:
             raise ValueError("No valid agents specified")
-        
+
         # This is a simplified example - in production, crews can execute complex workflows
         return {
             "crew_name": crew_name,
@@ -305,20 +349,21 @@ async def create_crew(agent_ids: List[str], crew_name: str = "Custom Crew"):
 async def executive_chat(request: ChatRequest):
     """
     Executive Chat endpoint - AI-powered conversational interface.
-    
+
     This provides intelligent responses for executive-level interactions,
     business strategy discussions, and decision support.
     """
     try:
-        # Process the chat message
-        response = executive_chat_agent.chat(
+        # Process the chat message (offloaded to thread – chat() is sync)
+        response = await asyncio.to_thread(
+            _get_executive_chat_agent().chat,
             message=request.message,
             context={
                 "conversation_id": request.conversation_id,
-                **(request.context or {})
-            }
+                **(request.context or {}),
+            },
         )
-        
+
         return {
             "status": "success",
             "response": response["message"],
@@ -336,8 +381,9 @@ async def analyze_business_request(request: Dict[str, Any]):
     Analyze a business request and provide structured insights.
     """
     try:
-        analysis = executive_chat_agent.analyze_business_request(
-            request.get("request", "")
+        analysis = await asyncio.to_thread(
+            _get_executive_chat_agent().analyze_business_request,
+            request.get("request", ""),
         )
         return analysis
     except Exception as e:
@@ -346,7 +392,7 @@ async def analyze_business_request(request: Dict[str, Any]):
 @app.post("/chat/reset")
 async def reset_chat():
     """Reset the conversation history."""
-    executive_chat_agent.reset_conversation()
+    _get_executive_chat_agent().reset_conversation()
     return {"status": "success", "message": "Conversation history reset"}
 
 # ============================================================
@@ -372,16 +418,18 @@ async def n8n_webhook(
             # Route to marketing processing
             result = await process_marketing_webhook(request.payload)
         elif request.trigger_type == "research":
-            # Use research agent
-            result = research_agent.research_topic(
+            # Use research agent (non-blocking)
+            result = await asyncio.to_thread(
+                _get_research_agent().research_topic,
                 topic=request.payload.get("topic", ""),
-                depth=request.payload.get("depth", "medium")
+                depth=request.payload.get("depth", "medium"),
             )
         else:
-            # Custom processing via executive chat
-            result = executive_chat_agent.chat(
+            # Custom processing via executive chat (non-blocking)
+            result = await asyncio.to_thread(
+                _get_executive_chat_agent().chat,
                 message=str(request.payload),
-                context={"workflow_id": request.workflow_id, "source": "n8n"}
+                context={"workflow_id": request.workflow_id, "source": "n8n"},
             )
 
         return {
@@ -416,10 +464,11 @@ async def process_marketing_webhook(payload: Dict[str, Any]) -> Dict[str, Any]:
     action = payload.get("action", "analyze")
     if action == "generate_content":
         topic = payload.get("topic", "")
-        content = writer_agent.write_blog_post(
+        content = await asyncio.to_thread(
+            _get_writer_agent().write_blog_post,
             topic=topic,
             tone="professional",
-            word_count=500
+            word_count=500,
         )
         return {"content": content, "topic": topic}
     return {
@@ -452,9 +501,10 @@ async def process_lead(
         Provide: qualification score (1-100), priority level, recommended next steps.
         """
 
-        response = executive_chat_agent.chat(
+        response = await asyncio.to_thread(
+            _get_executive_chat_agent().chat,
             message=analysis_prompt,
-            context={"lead_source": request.lead_source, "type": "lead_analysis"}
+            context={"lead_source": request.lead_source, "type": "lead_analysis"},
         )
 
         return {
@@ -500,9 +550,10 @@ async def qualify_lead(
         Provide a qualification score (0-100), match reasons, and gaps.
         """
 
-        response = executive_chat_agent.chat(
+        response = await asyncio.to_thread(
+            _get_executive_chat_agent().chat,
             message=qualification_prompt,
-            context={"type": "icp_qualification"}
+            context={"type": "icp_qualification"},
         )
 
         return {
@@ -538,21 +589,24 @@ async def generate_marketing_content(
         word_count = request.parameters.get("word_count", 800)
 
         if content_type == "blog_post":
-            result = writer_agent.write_blog_post(
+            result = await asyncio.to_thread(
+                _get_writer_agent().write_blog_post,
                 topic=topic,
                 tone=tone,
-                word_count=word_count
+                word_count=word_count,
             )
         elif content_type == "social_media":
-            result = writer_agent.write_email(  # Repurpose for short content
+            result = await asyncio.to_thread(
+                _get_writer_agent().write_email,  # Repurpose for short content
                 subject=topic,
                 tone="engaging",
-                key_points=request.parameters.get("key_points", [topic])
+                key_points=request.parameters.get("key_points", [topic]),
             )
         else:
-            result = writer_agent.summarize_content(
+            result = await asyncio.to_thread(
+                _get_writer_agent().summarize_content,
                 content=topic,
-                max_words=word_count
+                max_words=word_count,
             )
 
         return {
@@ -592,9 +646,10 @@ async def analyze_campaign(
         Provide: performance summary, key insights, recommendations for improvement.
         """
 
-        response = executive_chat_agent.chat(
+        response = await asyncio.to_thread(
+            _get_executive_chat_agent().chat,
             message=analysis_prompt,
-            context={"type": "campaign_analysis"}
+            context={"type": "campaign_analysis"},
         )
 
         return {

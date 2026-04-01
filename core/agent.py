@@ -10,6 +10,7 @@ CREWAI_AVAILABLE = True
 
 # Import our components
 from core.llm_singleton import get_singleton_llm
+from core.config import is_mock_mode
 from knowledge_bases.kb_interface import get_kb_interface
 
 # Try importing custom tools
@@ -45,7 +46,12 @@ class AgentConfig(BaseModel):
     
 class BaseAgent:
     """Base class for all agents in the system"""
-    
+
+    @property
+    def _is_mock_mode(self) -> bool:
+        """Return True when the framework is running in mock/test mode."""
+        return is_mock_mode()
+
     def __init__(self, config: AgentConfig):
         """Initialize the agent with configuration"""
         self.config = config
@@ -91,10 +97,8 @@ class BaseAgent:
         """Create a CrewAI agent based on the configuration"""
         if not CREWAI_AVAILABLE:
             return None
-            
-        # In mock mode, don't create a CrewAI agent
-        use_mock = os.environ.get('USE_MOCK_KB', 'false').lower() == 'true'
-        if use_mock:
+
+        if self._is_mock_mode:
             # Return None to indicate we should use our own mock implementation
             return None
             
@@ -116,10 +120,7 @@ class BaseAgent:
     
     def add_task(self, description: str, expected_output: str, context: Optional[Dict[str, Any]] = None) -> None:
         """Add a task to the agent's queue"""
-        # Check if we're in mock mode
-        use_mock = os.environ.get('USE_MOCK_KB', 'false').lower() == 'true'
-        
-        if CREWAI_AVAILABLE and self.crew_agent and not use_mock:
+        if CREWAI_AVAILABLE and self.crew_agent and not self._is_mock_mode:
             try:
                 # In normal mode, try with context
                 try:
@@ -160,15 +161,12 @@ class BaseAgent:
     def execute_tasks(self) -> List[str]:
         """Execute all queued tasks and return the results"""
         results = []
-        
+
         # If no tasks, return empty results
         if not self.tasks:
             return results
-        
-        # Check if we're in mock mode
-        use_mock = os.environ.get('USE_MOCK_KB', 'false').lower() == 'true'
-        
-        if CREWAI_AVAILABLE and self.crew_agent and not use_mock:
+
+        if CREWAI_AVAILABLE and self.crew_agent and not self._is_mock_mode:
             # Create a Crew with this agent and its tasks
             crew = Crew(
                 agents=[self.crew_agent],
@@ -213,11 +211,8 @@ class BaseAgent:
                     description = task.description
                     expected_output = task.expected_output
                     context = task.context
-                
-                # Check if we're in mock mode
-                use_mock = os.environ.get('USE_MOCK_KB', 'false').lower() == 'true'
-                
-                if use_mock:
+
+                if self._is_mock_mode:
                     # In mock mode, generate a plausible demo response based on the task
                     if "lead" in description.lower() and "generat" in description.lower():
                         # Generate mock lead data
