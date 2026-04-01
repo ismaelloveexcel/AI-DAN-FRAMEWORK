@@ -385,9 +385,19 @@ class JSONFormatter(logging.Formatter):
             'line': record.lineno
         }
         
-        # Add extra fields
-        if hasattr(record, 'extra'):
-            log_data.update(record.extra)
+        # Add extra fields from non-standard LogRecord attributes (e.g., extra=...)
+        standard_attrs = {
+            'name', 'msg', 'args', 'levelname', 'levelno', 'pathname',
+            'filename', 'module', 'exc_info', 'exc_text', 'stack_info',
+            'lineno', 'funcName', 'created', 'msecs', 'relativeCreated',
+            'thread', 'threadName', 'processName', 'process', 'taskName'
+        }
+        extra_attrs = {
+            key: value
+            for key, value in record.__dict__.items()
+            if key not in standard_attrs and not key.startswith('_')
+        }
+        log_data.update(extra_attrs)
         
         # Add exception info if present
         if record.exc_info:
