@@ -41,7 +41,7 @@ jobs:
         ENABLE_AUTH: "true"
         FRAMEWORK_API_KEY: "ci-test-key"
       run: |
-        pytest test_framework.py tests/test_n8n_integration.py -v --tb=short
+        pytest test_framework.py tests/test_n8n_integration.py tests/test_policy.py tests/test_api_config.py -v --tb=short
 
   lint:
     runs-on: ubuntu-latest
