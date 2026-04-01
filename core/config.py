@@ -7,7 +7,7 @@ All environment variables and settings are defined here.
 
 import os
 from typing import Dict, Optional, List, Literal
-from pydantic import Field, validator
+from pydantic import AliasChoices, Field, validator
 from pydantic_settings import BaseSettings
 
 
@@ -23,8 +23,14 @@ class ModelConfig(BaseSettings):
 class OllamaSettings(BaseSettings):
     """Ollama-specific configuration."""
     
-    host: str = Field(default="http://localhost:11434")
-    default_model: str = Field(default="llama3.2:3b")
+    host: str = Field(
+        default="http://localhost:11434",
+        validation_alias=AliasChoices("OLLAMA_HOST", "host")
+    )
+    default_model: str = Field(
+        default="llama3.2:3b",
+        validation_alias=AliasChoices("OLLAMA_MODEL", "default_model")
+    )
     health_check_timeout: int = Field(default=5, ge=1, le=30)
     health_check_cache_ttl: int = Field(default=60, ge=10, le=300)
     
@@ -63,7 +69,7 @@ class HTTPClientSettings(BaseSettings):
     max_connections: int = Field(default=100, ge=10, le=500)
     max_keepalive_connections: int = Field(default=20, ge=5, le=100)
     keepalive_expiry: int = Field(default=30, ge=10, le=300)
-    enable_http2: bool = Field(default=True)
+    enable_http2: bool = Field(default=False)  # Requires httpx[http2] (h2 package)
 
 
 class LoggingSettings(BaseSettings):

@@ -13,6 +13,14 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+# HTTP/2 requires the optional 'h2' package (install httpx[http2]).
+# Default to False if the dependency is not available.
+try:
+    import h2  # noqa: F401
+    _HTTP2_AVAILABLE = True
+except ImportError:
+    _HTTP2_AVAILABLE = False
+
 
 class HTTPClientManager:
     """Singleton HTTP client manager with connection pooling."""
@@ -39,7 +47,7 @@ class HTTPClientManager:
                             max_keepalive_connections=20,
                             keepalive_expiry=30.0
                         ),
-                        http2=True,  # Enable HTTP/2 for better performance
+                        http2=_HTTP2_AVAILABLE,  # Enable HTTP/2 only when h2 is installed
                         follow_redirects=True
                     )
                     logger.info("Async HTTP client initialized with connection pooling")
@@ -57,7 +65,7 @@ class HTTPClientManager:
                             max_keepalive_connections=20,
                             keepalive_expiry=30.0
                         ),
-                        http2=True,
+                        http2=_HTTP2_AVAILABLE,
                         follow_redirects=True
                     )
                     logger.info("Sync HTTP client initialized with connection pooling")

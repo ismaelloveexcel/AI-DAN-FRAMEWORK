@@ -405,11 +405,13 @@ settings = Settings()
 ```python
 # tests/test_api_endpoints.py
 import pytest
-from httpx import AsyncClient
+from httpx import AsyncClient, ASGITransport
+from api_server import app
 
 @pytest.mark.asyncio
 async def test_research_endpoint():
-    async with AsyncClient(app=app, base_url="http://test") as client:
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
         response = await client.post(
             "/research",
             json={"topic": "AI agents", "depth": "medium"}
@@ -419,7 +421,8 @@ async def test_research_endpoint():
 
 @pytest.mark.asyncio
 async def test_research_endpoint_timeout():
-    async with AsyncClient(app=app, base_url="http://test") as client:
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
         response = await client.post(
             "/research",
             json={"topic": "AI agents", "depth": "comprehensive"},
