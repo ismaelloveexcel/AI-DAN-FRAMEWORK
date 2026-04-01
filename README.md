@@ -1,292 +1,155 @@
-# JeweledTech Agentic OS: Your Business-in-a-Box
+# AIDAN-OS — AI Daily Autonomous Navigator
 
-Build, automate, and scale your entire company with a digital workforce. JeweledTech's Agentic OS is an open-source framework for scaffolding a complete enterprise, from sales and marketing to product development and back-office operations, and a complete security as a service department using a hierarchy of collaborative AI agents.
+**Solo operator business OS. One product → $500 MRR → Scale.**
 
-This isn't just another AI agent creation tool. It's a blueprint for architecting a fully functional, scalable business where AI agents act as department heads, managers, and specialized workers, all orchestrated to achieve your strategic goals. It's designed for entrepreneurs, startups, and SMBs who need to scale efficiently without the immediate overhead of a large human workforce.
+AIDAN is your operator, not a tool. It gives you ONE task per day, keeps you focused, validates ideas before you build them, and tracks your path to $500 MRR — while making sure you don't burn out doing it.
 
----
-
-## Framework at a Glance
-
-| Metric | Count |
-|--------|-------|
-| **Departments** | 7 |
-| **AI Agents** | 15+ |
-| **n8n Workflows** | 87 |
-| **Tool Integrations** | 10+ |
+> "This idea looks exciting… but it won't make money. Let's fix that before we waste 3 days."
 
 ---
 
-## Complete Organization Chart
-
-![JeweledTech Agentic Framework - Organization Chart](docs/images/org-chart.png)
-
-*7 departments with specialized AI agents and n8n workflow integrations*
-
----
-
-## The 7 Departments
-
-### 1. Executive Department
-**Chief Executive Agent** - The central orchestrator that coordinates all department agents, makes strategic decisions, and provides business guidance.
-
-### 2. Sales Department
-| Agent | Description | Tools |
-|-------|-------------|-------|
-| Inbound Sales Manager | Qualifies inbound leads, routes to appropriate reps | HubSpot |
-| Outbound Sales Manager | Email campaigns, lead generation, cold outreach | Gmail, SMTP |
-| Sales Lead Agent | Scores leads against ICP, prioritizes prospects | HubSpot CRM |
-| Outreach Agent | Personalized sequences, follow-up emails | Resend, Gmail |
-
-### 3. Marketing Department
-| Agent | Description | Tools |
-|-------|-------------|-------|
-| Content Marketing Agent | Blog posts, social content, SEO optimization | Notion, Social APIs |
-| Campaign Agent | Campaign management, ROI analysis, A/B testing | Analytics |
-
-### 4. Engineering Department
-| Agent | Description | Tools |
-|-------|-------------|-------|
-| Engineering Agent | Triages issues, manages bug reports, feature requests | GitHub |
-| Product Agent | Roadmap planning, feature prioritization | Jira |
-
-### 5. Customer Department
-| Agent | Description | Tools |
-|-------|-------------|-------|
-| Customer Support Agent | Handles tickets, provides solutions | Freshdesk |
-| Escalation Agent | Manages escalations, SLA compliance | Slack |
-
-### 6. BackOffice Department
-| Agent | Description | Tools |
-|-------|-------------|-------|
-| Invoice Agent | Generates invoices, tracks payments | Wave |
-| Finance Agent | Financial reporting, expense tracking | QuickBooks |
-
-### 7. Security Department
-| Agent | Description | Tools |
-|-------|-------------|-------|
-| Security Agent | Monitors alerts, detects threats | Wazuh |
-| Audit Agent | Security audits, compliance checks | Logging |
-
----
-
-## n8n Workflow Integration
-
-The framework includes **87 pre-built n8n workflows** for business process automation:
-
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                     n8n Cloud Instance                          │
-│              https://your-instance.app.n8n.cloud                │
-├─────────────────────────────────────────────────────────────────┤
-│                                                                 │
-│  ┌──────────────┐   ┌──────────────┐   ┌──────────────┐        │
-│  │   Webhooks   │   │  Workflows   │   │ Credentials  │        │
-│  │  /sales-*    │   │  87 total    │   │  HubSpot     │        │
-│  │  /marketing  │   │              │   │  Gmail/SMTP  │        │
-│  │  /proposal   │   │              │   │  Supabase    │        │
-│  └──────┬───────┘   └──────┬───────┘   └──────────────┘        │
-│         │                  │                                    │
-│         └────────┬─────────┘                                    │
-│                  │                                              │
-│         ┌────────▼────────┐                                     │
-│         │  Instance MCP   │◄──── MCP Tools                      │
-│         │  /mcp-server/   │      search_workflows               │
-│         └────────┬────────┘      execute_workflow               │
-│                  │               get_workflow_details           │
-└──────────────────┼──────────────────────────────────────────────┘
-                   │
-          ┌────────▼────────┐
-          │    Framework    │
-          │   API Server    │
-          │  localhost:8000 │
-          └────────┬────────┘
-                   │
-          ┌────────▼────────┐
-          │   CrewAI Agents │
-          │  7 Departments  │
-          │   15+ Agents    │
-          └─────────────────┘
-```
-
-### Workflow Categories
-
-| Department | Workflows | Key Automations |
-|------------|-----------|-----------------|
-| Sales | 6+ | Lead processing, ICP qualification, proposal nurturing |
-| Marketing | 5+ | Content distribution, social posting, email campaigns |
-| Engineering | 3+ | Issue triage, bug tracking, feature requests |
-| Customer | 3+ | Ticket handling, escalations, SLA monitoring |
-| BackOffice | 3+ | Invoice generation, payment tracking |
-| Security | 3+ | Threat detection, incident response |
-
----
-
-## Demo UI
-
-The framework includes a visual demo interface at `demo-ui/index.html`:
-
-**Features:**
-- Interactive org chart visualization
-- Agent discovery with filtering by department
-- n8n workflow browser
-- Live API testing ("Try It Out")
-- Real-time API status indicator
-
-**To view the demo:**
-```bash
-# Start the API server
-python api_server.py
-
-# Open in browser
-open demo-ui/index.html
-```
-
----
-
-## Quick Start
-
-### Option 1: Local Development (Mock Mode)
+## Quick Start (3 Steps)
 
 ```bash
-# Clone the repository
-git clone https://github.com/JeweledTech/agentic-framework.git
-cd agentic-framework
+# 1. Clone the repo
+git clone https://github.com/ismaelloveexcel/AI-DAN-FRAMEWORK.git
+cd AI-DAN-FRAMEWORK
 
-# Create virtual environment
-python -m venv venv
-source venv/bin/activate  # or .\venv\Scripts\activate on Windows
+# 2. Open the Mission Control dashboard (no server needed)
+open dashboard/index.html
 
-# Install dependencies
+# 3. Follow today's task in the Today tab
+```
+
+**To run the API server (optional):**
+```bash
 pip install -r requirements.txt
-
-# Create .env file
-cp .env.example .env
-
-# Start API server (mock mode - no LLM required)
-USE_MOCK_KB=true python api_server.py
-```
-
-### Option 2: With Ollama (Full AI Capabilities)
-
-```bash
-# Start Ollama
-ollama serve
-
-# Pull a model
-ollama pull llama3.2:3b
-
-# Start API server
+cp config/.env.example .env  # add your OpenAI key
 python api_server.py
-```
-
-### Option 3: Docker Deployment
-
-```bash
-# Development
-docker-compose up -d
-
-# Production (with GPU support)
-docker-compose -f docker-compose.production.yml up -d
+# → http://localhost:8000/health
 ```
 
 ---
 
-## API Endpoints
+## Architecture
 
-Once running, access the API at `http://localhost:8000`:
+```
+You → talk to AIDAN
 
-| Endpoint | Method | Description |
-|----------|--------|-------------|
-| `/health` | GET | Health check and agent count |
-| `/agents` | GET | List all available agents |
-| `/research` | POST | Research a topic |
-| `/write` | POST | Generate content |
-| `/collaborate` | POST | Multi-agent collaboration |
-| `/chat` | POST | Executive chat interface |
-| `/docs` | GET | Interactive API documentation |
+AIDAN:
+  → gives 1 task per day
+  → validates ideas (5 Kill Criteria)
+  → generates Cursor build prompts
+  → tracks revenue
+  → flags overwork
+
+You:
+  → approve or reject
+  → execute the ONE task
+  → track in Airtable
+```
+
+**The 4 functions (everything else is noise):**
+
+| Function | What it does | Who handles |
+|---|---|---|
+| Find Ideas | Identify opportunities | AIDAN |
+| Build Product | Create MVP fast | AIDAN + Cursor |
+| Get Users | Organic traffic | AIDAN |
+| Track Money | Revenue + metrics | Airtable |
 
 ---
 
-## Configuration
+## Current Products
 
-### Environment Variables
+| Product | Stage | Target MRR |
+|---|---|---|
+| CareerScore MU | Building | Rs 25,000/mo ($500) |
+| AI Excel Report Generator | Idea | After CV Tool hits $500 |
+| SMB AI Assistant | Idea | After CV Tool hits $500 |
 
-```env
-# LLM Configuration
-OLLAMA_HOST=http://localhost:11434
-OLLAMA_MODEL=llama3.2:3b
+**Rule: ONE product at a time until $500 MRR.**
 
-# API Server
-API_HOST=0.0.0.0
-API_PORT=8000
+---
 
-# n8n Integration
-N8N_HOST=https://your-instance.app.n8n.cloud
-N8N_MCP_TOKEN=your_jwt_token
+## Repository Structure
 
-# Development
-USE_MOCK_KB=true  # Enable mock mode for testing
-DEBUG_MODE=true
+```
+AIDAN-OS/
+├── aidan/               # AIDAN system prompt, pipeline, approval gates
+├── products/
+│   ├── cv-tool/         # Full product brief, scoring prompt, salary data, landing page
+│   ├── excel-report-tool/
+│   └── smb-assistant/
+├── dashboard/           # index.html — Mission Control (offline, localStorage)
+├── tracker/             # Airtable setup instructions
+├── api/                 # Lean FastAPI server (6 endpoints)
+├── config/              # .env.example
+├── core/                # config, llm, exceptions, http_client
+├── agents/              # executive_chat
+├── DAILY_PLAYBOOK.md    # Open every morning
+└── requirements.txt     # ~10 dependencies
 ```
 
 ---
 
-## Project Structure
+## Tech Stack
+
+| Tool | Purpose |
+|---|---|
+| **Cursor** | Build apps fast |
+| **ChatGPT** | AIDAN brain (paste system prompt) |
+| **GitHub** | Code storage |
+| **Airtable** | Revenue + user tracking |
+| **Vercel** | Deploy static sites free |
+
+No n8n. No CrewAI. No LangChain. No overengineering.
+
+---
+
+## The Rules
 
 ```
-agentic-framework/
-├── agents/
-│   ├── sales/           # Sales department agents
-│   ├── marketing/       # Marketing department agents
-│   ├── examples/        # Research & Writer agents
-│   └── executive_chat.py
-├── core/
-│   ├── agent.py         # BaseAgent class
-│   ├── llm_singleton.py # LLM management
-│   └── tools.py         # Tool implementations
-├── n8n_workflows/       # 87 workflow templates
-│   ├── phase5/          # Advanced nurture sequences
-│   └── README.md        # Import instructions
-├── demo-ui/
-│   └── index.html       # Visual demo interface
-├── docs/
-│   └── images/          # Documentation images
-├── api_server.py        # FastAPI server
-├── docker-compose.yml   # Development deployment
-├── docker-compose.production.yml  # Production w/ GPU
-└── requirements.txt     # Python dependencies
+Revenue > Features
+Execution > Planning
+Speed > Perfection
+Consistency > Intensity
+$500 MRR > Everything else
 ```
 
 ---
 
-## Forked the Repository?
+## API Endpoints (6 only)
 
-If you've forked this repository and want a complete guide on setting up your environment, implementing custom agents, and building out your workforce:
-
-- **[Fork Setup Guide](FORK_SETUP_GUIDE.md)** - Complete setup instructions
-- **[Agent Templates](AGENT_TEMPLATES.md)** - Ready-to-use agent templates
-
----
-
-## Enterprise & SaaS Options
-
-The Community Edition provides the foundational engine. For businesses ready to scale:
-
-- **JeweledTech Enterprise**: Complete multi-department digital workforce with all specialized agents, advanced autonomous capabilities, and full n8n automation workflows.
-
-- **JeweledTech SaaS Platform**: Fully managed, multi-tenant cloud platform. Get all the power of Enterprise with the convenience of SaaS.
-
-Learn more at [jeweledtech.com](https://jeweledtech.com)
+| Method | Endpoint | What it does |
+|---|---|---|
+| GET | /health | Health check |
+| POST | /aidan/chat | Talk to AIDAN |
+| POST | /aidan/daily | Get today's ONE task |
+| POST | /aidan/evaluate | Evaluate an idea (5 Kill Criteria) |
+| POST | /aidan/build-prompt | Generate Cursor-ready build prompt |
+| POST | /aidan/weekly-review | Weekly what-worked / what-failed review |
 
 ---
 
-## Contributing
+## First Product: CareerScore MU
 
-We welcome contributions from the community!
+AI-powered CV scoring for Mauritius job seekers.
 
-- **[Contributing Guide](CONTRIBUTING.md)** - How to contribute
-- **[GitHub Issues](https://github.com/JeweledTech/agentic-framework/issues)** - Report bugs or request features
+- Upload CV → get instant score (0-100%), gap analysis, salary benchmark, matching jobs
+- Free tier (score + gaps) → paid job feed (Rs 500/mo)
+- **45 subscribers = $500 MRR**
+- No competitor doing AI CV scoring for Mauritius
+
+See `products/cv-tool/` for full product brief, scoring prompt, salary data, and launch posts.
+
+---
+
+## After $500 MRR
+
+Only then: add second product, start newsletter, add analytics, consider a contractor.
+
+Not before.
 
 ---
 
@@ -296,6 +159,4 @@ MIT License - See [LICENSE](LICENSE) for details.
 
 ---
 
-**Built with CrewAI, LangChain, FastAPI, and n8n**
-
-*Let's build the future of the enterprise, together.*
+*Built for solo operators who are serious about revenue, not frameworks.*

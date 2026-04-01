@@ -1,0 +1,1229 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AIDAN-OS Mission Control</title>
+<style>
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+  :root{
+    --bg1:#0a0a1a;--bg2:#1a0a2e;
+    --purple:#a78bfa;--cyan:#22d3ee;--green:#4ade80;--amber:#fbbf24;--red:#f87171;
+    --glass:rgba(255,255,255,0.06);--glass-border:rgba(255,255,255,0.12);
+    --glass-hover:rgba(255,255,255,0.10);
+    --text:#e2e8f0;--text-muted:#94a3b8;--text-dim:#64748b;
+    --radius:12px;--radius-sm:8px;
+  }
+  html{font-size:16px}
+  body{
+    background:linear-gradient(135deg,var(--bg1) 0%,var(--bg2) 100%);
+    min-height:100vh;color:var(--text);font-family:'Segoe UI',system-ui,sans-serif;
+    line-height:1.5;
+  }
+  /* ── LAYOUT ── */
+  #app{display:flex;flex-direction:column;min-height:100vh}
+  #top-bar{
+    background:rgba(10,10,26,0.85);backdrop-filter:blur(16px);
+    border-bottom:1px solid var(--glass-border);
+    padding:10px 16px;position:sticky;top:0;z-index:100;
+  }
+  #top-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+  #logo{font-size:1.1rem;font-weight:700;background:linear-gradient(90deg,var(--purple),var(--cyan));
+    -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
+    white-space:nowrap;margin-right:4px}
+  #stats-row{display:flex;gap:8px;flex:1;flex-wrap:wrap;align-items:center}
+  .stat-box{
+    background:var(--glass);border:1px solid var(--glass-border);border-radius:var(--radius-sm);
+    padding:6px 12px;cursor:pointer;transition:background .2s;min-width:80px;
+  }
+  .stat-box:hover{background:var(--glass-hover)}
+  .stat-label{font-size:.65rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em}
+  .stat-value{font-size:1rem;font-weight:700;color:var(--cyan)}
+  .stat-value.editing{
+    background:rgba(34,211,238,0.15);border:1px solid var(--cyan);
+    border-radius:4px;padding:0 4px;outline:none;color:var(--cyan);
+    font-size:1rem;font-weight:700;width:80px;
+  }
+  #aidan-status{display:flex;align-items:center;gap:6px;margin-left:auto;white-space:nowrap}
+  .pulse-dot{width:8px;height:8px;border-radius:50%;background:var(--green);
+    box-shadow:0 0 0 0 rgba(74,222,128,.6);animation:pulse 2s infinite}
+  @keyframes pulse{
+    0%{box-shadow:0 0 0 0 rgba(74,222,128,.6)}
+    70%{box-shadow:0 0 0 8px rgba(74,222,128,0)}
+    100%{box-shadow:0 0 0 0 rgba(74,222,128,0)}
+  }
+  #status-text{font-size:.8rem;color:var(--green);font-weight:600}
+  /* ── APPROVAL BAR ── */
+  #approval-bar{
+    background:rgba(251,191,36,0.15);border-bottom:1px solid rgba(251,191,36,0.3);
+    padding:8px 16px;display:flex;align-items:center;gap:12px;
+    font-size:.85rem;color:var(--amber);
+  }
+  #approval-bar.hidden{display:none}
+  #approval-bar span{flex:1}
+  .btn-amber{
+    background:rgba(251,191,36,0.2);border:1px solid var(--amber);color:var(--amber);
+    padding:4px 14px;border-radius:20px;cursor:pointer;font-size:.8rem;font-weight:600;
+    transition:background .2s;
+  }
+  .btn-amber:hover{background:rgba(251,191,36,0.35)}
+  /* ── TABS ── */
+  #tab-nav{
+    background:rgba(10,10,26,0.6);backdrop-filter:blur(12px);
+    border-bottom:1px solid var(--glass-border);
+    display:flex;overflow-x:auto;scrollbar-width:none;
+  }
+  #tab-nav::-webkit-scrollbar{display:none}
+  .tab-btn{
+    flex:1;min-width:80px;padding:12px 10px;background:none;border:none;
+    color:var(--text-muted);cursor:pointer;font-size:.82rem;font-weight:600;
+    border-bottom:2px solid transparent;transition:all .2s;white-space:nowrap;
+  }
+  .tab-btn.active{color:var(--purple);border-bottom-color:var(--purple)}
+  .tab-btn:hover:not(.active){color:var(--text);background:var(--glass)}
+  /* ── MAIN CONTENT ── */
+  #main{flex:1;padding:20px 16px;max-width:1100px;margin:0 auto;width:100%}
+  .tab-panel{display:none}
+  .tab-panel.active{display:block}
+  /* ── GLASS CARD ── */
+  .card{
+    background:var(--glass);border:1px solid var(--glass-border);
+    border-radius:var(--radius);padding:20px;margin-bottom:16px;
+    backdrop-filter:blur(12px);
+  }
+  .card-title{font-size:1rem;font-weight:700;margin-bottom:14px;
+    color:var(--text);display:flex;align-items:center;gap:8px}
+  /* ── BUTTONS ── */
+  .btn{
+    display:inline-flex;align-items:center;gap:6px;padding:8px 18px;
+    border-radius:20px;border:none;cursor:pointer;font-size:.85rem;font-weight:600;
+    transition:all .2s;
+  }
+  .btn-primary{background:linear-gradient(135deg,var(--purple),#7c3aed);color:#fff}
+  .btn-primary:hover{opacity:.85;transform:translateY(-1px)}
+  .btn-cyan{background:linear-gradient(135deg,var(--cyan),#0891b2);color:#0a0a1a}
+  .btn-cyan:hover{opacity:.85;transform:translateY(-1px)}
+  .btn-ghost{background:var(--glass);border:1px solid var(--glass-border);color:var(--text)}
+  .btn-ghost:hover{background:var(--glass-hover)}
+  .btn-danger{background:rgba(248,113,113,0.2);border:1px solid var(--red);color:var(--red)}
+  .btn-danger:hover{background:rgba(248,113,113,0.35)}
+  .btn-success{background:rgba(74,222,128,0.2);border:1px solid var(--green);color:var(--green)}
+  .btn-success:hover{background:rgba(74,222,128,0.35)}
+  .btn-lg{padding:14px 32px;font-size:1rem;border-radius:24px}
+  /* ── TODAY TAB ── */
+  #task-display{
+    font-size:1.3rem;font-weight:700;color:var(--text);cursor:pointer;
+    min-height:36px;padding:4px 0;
+  }
+  #task-display.completed{text-decoration:line-through;color:var(--text-dim)}
+  #task-input{
+    font-size:1.3rem;font-weight:700;background:rgba(167,139,250,0.1);
+    border:1px solid var(--purple);border-radius:var(--radius-sm);padding:6px 10px;
+    color:var(--text);width:100%;display:none;
+  }
+  #time-display{color:var(--cyan);cursor:pointer;font-size:.9rem;margin-top:6px}
+  #time-input{
+    background:rgba(34,211,238,0.1);border:1px solid var(--cyan);border-radius:var(--radius-sm);
+    padding:4px 8px;color:var(--cyan);font-size:.9rem;display:none;width:160px;
+  }
+  #donot-display{
+    color:var(--text-muted);cursor:pointer;font-size:.85rem;min-height:24px;
+    white-space:pre-wrap;
+  }
+  #donot-textarea{
+    background:rgba(255,255,255,0.05);border:1px solid var(--glass-border);
+    border-radius:var(--radius-sm);padding:8px;color:var(--text-muted);
+    font-size:.85rem;width:100%;min-height:80px;resize:vertical;display:none;
+  }
+  #complete-btn{width:100%;justify-content:center}
+  #complete-btn.done{
+    background:linear-gradient(135deg,var(--green),#16a34a);
+    color:#0a0a1a;
+  }
+  /* ── IDEAS TAB ── */
+  #kanban{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;min-width:0;overflow-x:auto}
+  .kanban-col{min-width:150px}
+  .kanban-header{
+    font-size:.75rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;
+    padding:6px 10px;border-radius:var(--radius-sm);margin-bottom:10px;text-align:center;
+  }
+  .col-idea .kanban-header{background:rgba(100,116,139,0.3);color:#94a3b8}
+  .col-validating .kanban-header{background:rgba(251,191,36,0.2);color:var(--amber)}
+  .col-building .kanban-header{background:rgba(34,211,238,0.2);color:var(--cyan)}
+  .col-live .kanban-header{background:rgba(74,222,128,0.2);color:var(--green)}
+  .col-killed .kanban-header{background:rgba(248,113,113,0.15);color:var(--red)}
+  .idea-card{
+    background:var(--glass);border:1px solid var(--glass-border);border-radius:var(--radius-sm);
+    padding:12px;margin-bottom:10px;font-size:.82rem;
+  }
+  .idea-name{font-weight:700;color:var(--text);margin-bottom:4px;font-size:.88rem}
+  .idea-desc{color:var(--text-muted);margin-bottom:8px;font-size:.78rem;line-height:1.4}
+  .stars{display:flex;gap:3px;margin-bottom:8px}
+  .star{cursor:pointer;font-size:1rem;color:var(--text-dim);transition:color .15s}
+  .star.filled{color:#fbbf24}
+  .idea-status-select{
+    background:rgba(255,255,255,0.06);border:1px solid var(--glass-border);
+    color:var(--text);border-radius:6px;padding:3px 6px;font-size:.75rem;width:100%;
+  }
+  #add-idea-btn{margin-top:4px}
+  /* ── REVENUE TAB ── */
+  #rev-stats{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin-bottom:16px}
+  @media(min-width:600px){#rev-stats{grid-template-columns:repeat(4,1fr)}}
+  .rev-stat-card{
+    background:var(--glass);border:1px solid var(--glass-border);border-radius:var(--radius);
+    padding:16px;text-align:center;
+  }
+  .rev-stat-label{font-size:.7rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px}
+  .rev-stat-value{
+    font-size:1.6rem;font-weight:800;
+    background:linear-gradient(135deg,var(--purple),var(--cyan));
+    -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
+    cursor:pointer;
+  }
+  .rev-stat-value.editing{
+    -webkit-text-fill-color:var(--cyan);background:none;
+    border:1px solid var(--cyan);border-radius:6px;padding:0 6px;
+    outline:none;font-size:1.4rem;width:100%;text-align:center;
+  }
+  #chart-wrap{position:relative;width:100%;overflow-x:auto}
+  #rev-chart{width:100%;min-width:320px;height:200px;display:block}
+  /* ── PRODUCTS TAB ── */
+  .product-card{margin-bottom:20px}
+  .product-header{display:flex;align-items:center;gap:10px;margin-bottom:14px}
+  .product-name{font-size:1.05rem;font-weight:700}
+  .badge{
+    font-size:.68rem;font-weight:700;padding:3px 10px;border-radius:20px;
+    text-transform:uppercase;letter-spacing:.06em;
+  }
+  .badge-build{background:rgba(34,211,238,0.2);color:var(--cyan);border:1px solid rgba(34,211,238,0.4)}
+  .badge-idea{background:rgba(100,116,139,0.2);color:#94a3b8;border:1px solid rgba(100,116,139,0.3)}
+  .badge-live{background:rgba(74,222,128,0.2);color:var(--green);border:1px solid rgba(74,222,128,0.4)}
+  /* pipeline */
+  .pipeline{display:flex;gap:0;margin-bottom:16px;overflow-x:auto}
+  .pipe-stage{
+    flex:1;min-width:70px;padding:7px 4px;text-align:center;font-size:.7rem;font-weight:600;
+    border:1px solid var(--glass-border);color:var(--text-dim);
+    background:rgba(255,255,255,0.03);position:relative;
+    transition:all .2s;
+  }
+  .pipe-stage:first-child{border-radius:var(--radius-sm) 0 0 var(--radius-sm)}
+  .pipe-stage:last-child{border-radius:0 var(--radius-sm) var(--radius-sm) 0}
+  .pipe-stage:not(:last-child){border-right:none}
+  .pipe-stage.active{
+    background:rgba(167,139,250,0.25);border-color:var(--purple);color:var(--purple);
+    box-shadow:0 0 12px rgba(167,139,250,0.4);z-index:1;
+  }
+  .pipe-stage.done{background:rgba(74,222,128,0.1);border-color:rgba(74,222,128,0.3);color:var(--green)}
+  /* checklist */
+  .checklist-item{
+    display:flex;align-items:center;gap:10px;padding:8px 0;
+    border-bottom:1px solid rgba(255,255,255,0.05);font-size:.88rem;
+  }
+  .checklist-item:last-child{border-bottom:none}
+  .checklist-item input[type=checkbox]{
+    width:16px;height:16px;accent-color:var(--purple);cursor:pointer;flex-shrink:0;
+  }
+  .checklist-item label{cursor:pointer;color:var(--text)}
+  .checklist-item.checked label{color:var(--text-dim);text-decoration:line-through}
+  /* ── AIDAN TAB ── */
+  #system-prompt-block{
+    background:rgba(0,0,0,0.4);border:1px solid var(--glass-border);border-radius:var(--radius-sm);
+    padding:16px;font-size:.8rem;font-family:'Courier New',monospace;color:#c4b5fd;
+    max-height:280px;overflow-y:auto;white-space:pre-wrap;line-height:1.6;
+    margin-bottom:14px;
+  }
+  .approval-item{
+    display:flex;align-items:center;gap:10px;padding:12px;
+    background:rgba(251,191,36,0.08);border:1px solid rgba(251,191,36,0.2);
+    border-radius:var(--radius-sm);margin-bottom:10px;
+  }
+  .approval-desc{flex:1;font-size:.85rem;color:var(--text)}
+  .type-badge{
+    font-size:.65rem;font-weight:700;padding:2px 8px;border-radius:20px;
+    text-transform:uppercase;white-space:nowrap;
+  }
+  .type-Money{background:rgba(74,222,128,0.2);color:var(--green);border:1px solid rgba(74,222,128,0.4)}
+  .type-Publish{background:rgba(167,139,250,0.2);color:var(--purple);border:1px solid rgba(167,139,250,0.4)}
+  .type-Send{background:rgba(34,211,238,0.2);color:var(--cyan);border:1px solid rgba(34,211,238,0.4)}
+  .type-Launch{background:rgba(251,191,36,0.2);color:var(--amber);border:1px solid rgba(251,191,36,0.4)}
+  .empty-state{
+    text-align:center;color:var(--text-dim);padding:30px 0;font-size:.9rem;
+  }
+  /* settings */
+  .setting-row{display:flex;align-items:center;gap:12px;margin-bottom:14px;flex-wrap:wrap}
+  .setting-label{font-size:.85rem;color:var(--text-muted);min-width:160px}
+  input[type=range]{accent-color:var(--purple);flex:1;min-width:100px}
+  .setting-select{
+    background:rgba(255,255,255,0.06);border:1px solid var(--glass-border);
+    color:var(--text);border-radius:var(--radius-sm);padding:6px 10px;font-size:.85rem;
+  }
+  #hours-display{color:var(--purple);font-weight:700;min-width:40px;text-align:right}
+  /* ── TOAST ── */
+  #toast-container{position:fixed;bottom:24px;right:24px;z-index:9999;display:flex;flex-direction:column;gap:8px}
+  .toast{
+    background:rgba(30,20,50,0.95);border:1px solid var(--purple);border-radius:var(--radius-sm);
+    padding:10px 18px;font-size:.85rem;color:var(--text);
+    animation:slide-in .25s ease,fade-out .3s ease 1.7s forwards;
+    backdrop-filter:blur(12px);
+  }
+  @keyframes slide-in{from{transform:translateX(40px);opacity:0}to{transform:none;opacity:1}}
+  @keyframes fade-out{to{opacity:0;transform:translateX(20px)}}
+  /* ── MODAL (add idea) ── */
+  #modal-overlay{
+    display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);
+    z-index:500;align-items:center;justify-content:center;padding:16px;
+  }
+  #modal-overlay.open{display:flex}
+  #modal{
+    background:linear-gradient(135deg,#14102a,#0f1a2e);border:1px solid var(--glass-border);
+    border-radius:var(--radius);padding:24px;width:100%;max-width:420px;
+  }
+  #modal h3{margin-bottom:16px;font-size:1rem}
+  .modal-field{margin-bottom:12px}
+  .modal-field label{display:block;font-size:.8rem;color:var(--text-muted);margin-bottom:4px}
+  .modal-field input,.modal-field textarea,.modal-field select{
+    width:100%;background:rgba(255,255,255,0.06);border:1px solid var(--glass-border);
+    border-radius:var(--radius-sm);padding:8px 10px;color:var(--text);font-size:.88rem;
+  }
+  .modal-field textarea{min-height:60px;resize:vertical}
+  .modal-actions{display:flex;gap:10px;justify-content:flex-end;margin-top:16px}
+  /* ── RESPONSIVE ── */
+  @media(max-width:700px){
+    #kanban{grid-template-columns:repeat(3,1fr)}
+    .col-killed,.col-live{display:none}
+    #main{padding:12px 10px}
+    .card{padding:14px}
+  }
+  @media(max-width:500px){
+    #kanban{grid-template-columns:repeat(2,1fr)}
+    .col-killed{display:none}
+    .tab-btn{font-size:.72rem;padding:10px 6px}
+    #top-row{gap:6px}
+    .stat-box{padding:5px 8px;min-width:68px}
+    .stat-value{font-size:.9rem}
+  }
+  /* ── SECTION HEADINGS ── */
+  .section-title{
+    font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.1em;
+    color:var(--text-dim);margin-bottom:10px;padding-bottom:6px;
+    border-bottom:1px solid rgba(255,255,255,0.06);
+  }
+  /* scrollbar */
+  ::-webkit-scrollbar{width:6px;height:6px}
+  ::-webkit-scrollbar-track{background:transparent}
+  ::-webkit-scrollbar-thumb{background:rgba(167,139,250,0.3);border-radius:3px}
+</style>
+</head>
+<body>
+<div id="app">
+
+  <!-- TOP BAR -->
+  <div id="top-bar">
+    <div id="top-row">
+      <span id="logo">⚡ AIDAN-OS</span>
+      <div id="stats-row">
+        <div class="stat-box" onclick="editStat('mrr')">
+          <div class="stat-label">MRR</div>
+          <div class="stat-value" id="stat-mrr">$0</div>
+        </div>
+        <div class="stat-box" onclick="editStat('users')">
+          <div class="stat-label">Users</div>
+          <div class="stat-value" id="stat-users">0</div>
+        </div>
+        <div class="stat-box" onclick="editStat('day')">
+          <div class="stat-label">Day</div>
+          <div class="stat-value" id="stat-day">1 / 90</div>
+        </div>
+        <div class="stat-box" title="Current product focus">
+          <div class="stat-label">Product</div>
+          <div class="stat-value" id="stat-product" style="font-size:.78rem;color:var(--purple)">CareerScore</div>
+        </div>
+      </div>
+      <div id="aidan-status">
+        <div class="pulse-dot"></div>
+        <span id="status-text">AIDAN Online</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- APPROVAL BAR -->
+  <div id="approval-bar" class="hidden">
+    <span id="approval-bar-text">⚠️ PENDING YOUR APPROVAL: 0 items</span>
+    <button class="btn-amber" onclick="switchTab('aidan')">Review</button>
+  </div>
+
+  <!-- TAB NAV -->
+  <nav id="tab-nav">
+    <button class="tab-btn active" onclick="switchTab('today')" data-tab="today">📋 Today</button>
+    <button class="tab-btn" onclick="switchTab('ideas')" data-tab="ideas">💡 Ideas</button>
+    <button class="tab-btn" onclick="switchTab('revenue')" data-tab="revenue">📊 Revenue</button>
+    <button class="tab-btn" onclick="switchTab('products')" data-tab="products">🚀 Products</button>
+    <button class="tab-btn" onclick="switchTab('aidan')" data-tab="aidan">⚙️ AIDAN</button>
+  </nav>
+
+  <!-- MAIN -->
+  <div id="main">
+
+    <!-- ── TODAY ── -->
+    <div class="tab-panel active" id="panel-today">
+      <div class="card">
+        <div class="card-title">🎯 Today's ONE Task</div>
+        <div id="task-display" onclick="startEditTask()" title="Click to edit">Loading…</div>
+        <input id="task-input" type="text" placeholder="What is your ONE task today?"
+               onblur="saveTask()" onkeydown="if(event.key==='Enter')saveTask()">
+        <div style="display:flex;align-items:center;gap:8px;margin-top:10px;flex-wrap:wrap">
+          <span style="font-size:.75rem;color:var(--text-dim)">⏱ Estimate:</span>
+          <span id="time-display" onclick="startEditTime()" title="Click to edit">1-2 hours</span>
+          <input id="time-input" type="text" placeholder="e.g. 1-2 hours"
+                 onblur="saveTime()" onkeydown="if(event.key==='Enter')saveTime()">
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">🚫 Do NOT Today</div>
+        <div id="donot-display" onclick="startEditDoNot()" title="Click to edit">Loading…</div>
+        <textarea id="donot-textarea" placeholder="One distraction per line…"
+                  onblur="saveDoNot()"></textarea>
+      </div>
+
+      <div style="display:flex;gap:10px;flex-wrap:wrap">
+        <button class="btn btn-primary btn-lg" id="complete-btn" style="flex:1" onclick="toggleComplete()">
+          Mark Complete ✓
+        </button>
+        <button class="btn btn-ghost btn-lg" style="flex:1" onclick="copyAidanPrompt()">
+          💬 Talk to AIDAN
+        </button>
+      </div>
+    </div>
+
+    <!-- ── IDEAS ── -->
+    <div class="tab-panel" id="panel-ideas">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px">
+        <h2 style="font-size:1.1rem;font-weight:700">💡 Idea Pipeline</h2>
+        <button class="btn btn-primary" id="add-idea-btn" onclick="openAddIdea()">+ Add Idea</button>
+      </div>
+      <div id="kanban">
+        <div class="kanban-col col-idea">
+          <div class="kanban-header">Idea</div>
+          <div class="kanban-cards" data-status="Idea"></div>
+        </div>
+        <div class="kanban-col col-validating">
+          <div class="kanban-header">Validating</div>
+          <div class="kanban-cards" data-status="Validating"></div>
+        </div>
+        <div class="kanban-col col-building">
+          <div class="kanban-header">Building</div>
+          <div class="kanban-cards" data-status="Building"></div>
+        </div>
+        <div class="kanban-col col-live">
+          <div class="kanban-header">Live</div>
+          <div class="kanban-cards" data-status="Live"></div>
+        </div>
+        <div class="kanban-col col-killed">
+          <div class="kanban-header">Killed</div>
+          <div class="kanban-cards" data-status="Killed"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── REVENUE ── -->
+    <div class="tab-panel" id="panel-revenue">
+      <div id="rev-stats">
+        <div class="rev-stat-card">
+          <div class="rev-stat-label">MRR ($)</div>
+          <div class="rev-stat-value" id="rev-mrr" onclick="editRevStat('mrr')">$0</div>
+        </div>
+        <div class="rev-stat-card">
+          <div class="rev-stat-label">Total Users</div>
+          <div class="rev-stat-value" id="rev-users" onclick="editRevStat('users')">0</div>
+        </div>
+        <div class="rev-stat-card">
+          <div class="rev-stat-label">Day (of 90)</div>
+          <div class="rev-stat-value" id="rev-day" onclick="editRevStat('day')">1</div>
+        </div>
+        <div class="rev-stat-card">
+          <div class="rev-stat-label">Total Sales</div>
+          <div class="rev-stat-value" id="rev-sales" onclick="editRevStat('sales')">$0</div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">📈 MRR Growth (12 Weeks)</div>
+        <div id="chart-wrap"><svg id="rev-chart" viewBox="0 0 640 200" preserveAspectRatio="xMidYMid meet"></svg></div>
+        <p style="font-size:.75rem;color:var(--text-dim);margin-top:8px">
+          Click any stat above to update. Chart reflects weekly MRR data.
+        </p>
+        <div style="margin-top:14px">
+          <div class="section-title">Weekly MRR Data</div>
+          <div id="weekly-data-row" style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── PRODUCTS ── -->
+    <div class="tab-panel" id="panel-products">
+      <h2 style="font-size:1.1rem;font-weight:700;margin-bottom:16px">🚀 Product Pipeline</h2>
+      <div id="products-container"></div>
+    </div>
+
+    <!-- ── AIDAN ── -->
+    <div class="tab-panel" id="panel-aidan">
+      <div class="card">
+        <div class="card-title">🤖 AIDAN System Prompt</div>
+        <div id="system-prompt-block"></div>
+        <button class="btn btn-cyan" onclick="copyAidanPrompt()">📋 Copy to Clipboard</button>
+      </div>
+
+      <div class="card">
+        <div class="card-title">⚠️ Approval Queue</div>
+        <div id="approval-list"></div>
+        <div style="display:flex;gap:10px;margin-top:12px;flex-wrap:wrap">
+          <button class="btn btn-ghost" onclick="addTestApproval()">+ Add Test Approval</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">⚙️ Settings</div>
+        <div class="setting-row">
+          <span class="setting-label">Max daily work hours</span>
+          <input type="range" min="1" max="8" step="1" id="hours-slider" oninput="updateHours(this.value)">
+          <span id="hours-display">3h</span>
+        </div>
+        <div class="setting-row">
+          <span class="setting-label">Current product focus</span>
+          <select class="setting-select" id="product-select" onchange="updateProduct(this.value)">
+            <option>CareerScore MU</option>
+            <option>Excel Report Generator</option>
+            <option>SMB Assistant</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /main -->
+</div><!-- /app -->
+
+<!-- MODAL -->
+<div id="modal-overlay" onclick="closeModalIfBackdrop(event)">
+  <div id="modal">
+    <h3>💡 New Idea</h3>
+    <div class="modal-field">
+      <label>Name</label>
+      <input type="text" id="idea-name-input" placeholder="Product / idea name">
+    </div>
+    <div class="modal-field">
+      <label>Description</label>
+      <textarea id="idea-desc-input" placeholder="One-line description…"></textarea>
+    </div>
+    <div class="modal-field">
+      <label>Score (1-5)</label>
+      <input type="number" id="idea-score-input" min="1" max="5" value="3">
+    </div>
+    <div class="modal-field">
+      <label>Status</label>
+      <select id="idea-status-input">
+        <option>Idea</option><option>Validating</option><option>Building</option>
+        <option>Live</option><option>Killed</option>
+      </select>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="saveNewIdea()">Add Idea</button>
+    </div>
+  </div>
+</div>
+
+<!-- TOAST CONTAINER -->
+<div id="toast-container"></div>
+
+<script>
+// ═══════════════════════════════════════════════
+//  CONSTANTS & SYSTEM PROMPT
+// ═══════════════════════════════════════════════
+// NOTE: This prompt is an embedded copy for the copy-to-clipboard feature.
+// Canonical source: aidan/system_prompt.md — keep in sync when updating.
+const SYSTEM_PROMPT = `AIDAN — AI Daily Autonomous Navigator
+
+You are a solo-operator business OS. Your user is building toward $500 MRR.
+
+PERSONALITY: Slightly sarcastic but respectful. Direct. No fluff. Calm under pressure. Keeps user focused.
+
+EXAMPLE TONE: "This idea looks exciting… but it won't make money. Let's fix that before we waste 3 days."
+
+CORE RULES:
+1. ONE priority per day. No exceptions.
+2. No multitasking.
+3. Track unfinished tasks.
+4. Maximum 2-3 hours of work per day.
+5. Validate before build.
+
+DAILY FORMAT (use when asked "What should I do today?"):
+TODAY'S FOCUS: [ONE specific task]
+EXPECTED OUTCOME: [Clear, measurable result]
+TIME ESTIMATE: [Max 2-3 hours]
+DO NOT: [1-3 specific distractions to avoid today]
+
+NEVER DO WITHOUT APPROVAL:
+❌ Spend money
+❌ Publish anything publicly
+❌ Send emails or messages
+❌ Launch a product
+
+THE 5 KILL CRITERIA (evaluate every idea):
+1. Search demand — are people searching for this?
+2. Willingness to pay — are people paying for something similar?
+3. Build speed — can it be built in 3 days with Cursor?
+4. Market fit — does it work for Mauritius?
+5. Recurring potential — can it generate MRR?
+
+DECISION FRAMEWORK:
+Revenue > Features
+Execution > Planning
+Speed > Perfection
+Consistency > Intensity
+$500 MRR > Everything else
+
+CONTEXT:
+- Current Product: CareerScore MU (AI CV scoring for Mauritius)
+- Current Stage: Building
+- Revenue Target: $500 MRR
+- Daily Work Limit: 3 hours maximum
+- Rule: ONE product until $500 MRR`;
+
+// ═══════════════════════════════════════════════
+//  DEFAULTS
+// ═══════════════════════════════════════════════
+const DEFAULTS = {
+  today: {
+    task: "Set up Airtable tracker (see tracker/airtable_setup.md)",
+    timeEstimate: "1-2 hours",
+    doNot: "Check email\nBrowse new ideas\nWork on other products",
+    completed: false
+  },
+  ideas: [
+    { id: 1, name: "CareerScore MU", desc: "AI CV scoring for Mauritius job seekers", score: 4, status: "Building" },
+    { id: 2, name: "AI Excel Report Generator", desc: "Upload spreadsheet → clean report", score: 3, status: "Idea" },
+    { id: 3, name: "SMB AI Assistant", desc: "WhatsApp chatbot for Mauritius SMBs", score: 3, status: "Idea" }
+  ],
+  revenue: {
+    mrr: 0, users: 0, dayCount: 1, totalSales: 0,
+    weeklyData: [0,0,0,0,0,0,0,0,0,0,0,0]
+  },
+  products: {
+    "CareerScore MU": { stage: "Build", checklist: [false,false,false,false,false] },
+    "Excel Report Generator": { stage: "Idea", checklist: [false,false,false,false,false] },
+    "SMB Assistant": { stage: "Idea", checklist: [false,false,false,false,false] }
+  },
+  approvals: [],
+  settings: { maxHours: 3, currentProduct: "CareerScore MU" }
+};
+
+const CHECKLIST_LABELS = [
+  "Landing page ready",
+  "Payment integration (Stripe)",
+  "First launch post published",
+  "First user acquired",
+  "First paying customer"
+];
+
+const PIPELINE_STAGES = ["Idea","Validate","Build","Launch","Revenue"];
+
+// ═══════════════════════════════════════════════
+//  STORAGE HELPERS
+// ═══════════════════════════════════════════════
+function load(key, fallback) {
+  try {
+    const v = localStorage.getItem(key);
+    return v !== null ? JSON.parse(v) : fallback;
+  } catch(e) { return fallback; }
+}
+function save(key, val) {
+  try { localStorage.setItem(key, JSON.stringify(val)); } catch(e) {}
+}
+
+function initStorage() {
+  if (!localStorage.getItem('aidan_today_task'))   save('aidan_today_task',   DEFAULTS.today);
+  if (!localStorage.getItem('aidan_ideas'))         save('aidan_ideas',        DEFAULTS.ideas);
+  if (!localStorage.getItem('aidan_revenue'))       save('aidan_revenue',      DEFAULTS.revenue);
+  if (!localStorage.getItem('aidan_products'))      save('aidan_products',     DEFAULTS.products);
+  if (!localStorage.getItem('aidan_approvals'))     save('aidan_approvals',    DEFAULTS.approvals);
+  if (!localStorage.getItem('aidan_settings'))      save('aidan_settings',     DEFAULTS.settings);
+}
+
+// ═══════════════════════════════════════════════
+//  TOAST
+// ═══════════════════════════════════════════════
+function toast(msg) {
+  const c = document.getElementById('toast-container');
+  const t = document.createElement('div');
+  t.className = 'toast';
+  t.textContent = msg;
+  c.appendChild(t);
+  setTimeout(() => t.remove(), 2100);
+}
+
+// ═══════════════════════════════════════════════
+//  TAB SWITCHING
+// ═══════════════════════════════════════════════
+function switchTab(tab) {
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.toggle('active', p.id === 'panel-' + tab));
+  if (tab === 'revenue') renderChart();
+}
+
+// ═══════════════════════════════════════════════
+//  STATS BAR
+// ═══════════════════════════════════════════════
+function refreshStatsBar() {
+  const rev = load('aidan_revenue', DEFAULTS.revenue);
+  const set = load('aidan_settings', DEFAULTS.settings);
+  document.getElementById('stat-mrr').textContent   = '$' + rev.mrr;
+  document.getElementById('stat-users').textContent  = rev.users;
+  document.getElementById('stat-day').textContent    = rev.dayCount + ' / 90';
+  const name = set.currentProduct || 'CareerScore MU';
+  document.getElementById('stat-product').textContent = name.split(' ')[0];
+}
+
+function editStat(which) {
+  const elMap = { mrr:'stat-mrr', users:'stat-users', day:'stat-day' };
+  if (!elMap[which]) return;
+  const el = document.getElementById(elMap[which]);
+  if (el.querySelector('input')) return;
+  const rev = load('aidan_revenue', DEFAULTS.revenue);
+  const curMap = { mrr: rev.mrr, users: rev.users, day: rev.dayCount };
+  const inp = document.createElement('input');
+  inp.type = 'number'; inp.className = 'stat-value editing';
+  inp.value = curMap[which]; inp.min = 0;
+  el.textContent = '';
+  el.appendChild(inp);
+  inp.focus(); inp.select();
+  function commit() {
+    const v = parseInt(inp.value) || 0;
+    const rev2 = load('aidan_revenue', DEFAULTS.revenue);
+    if (which === 'mrr')   { rev2.mrr = v; if (rev2.weeklyData) { const w = rev2.weeklyData; w[w.length-1] = v; } }
+    if (which === 'users') rev2.users = v;
+    if (which === 'day')   rev2.dayCount = Math.max(1, Math.min(90, v));
+    save('aidan_revenue', rev2);
+    refreshStatsBar();
+    renderChart();
+  }
+  inp.onblur = commit;
+  inp.onkeydown = e => { if (e.key === 'Enter') inp.blur(); };
+}
+
+// ═══════════════════════════════════════════════
+//  APPROVAL BAR
+// ═══════════════════════════════════════════════
+function refreshApprovalBar() {
+  const items = load('aidan_approvals', []);
+  const pending = items.filter(i => i.status === 'pending');
+  const bar = document.getElementById('approval-bar');
+  if (pending.length > 0) {
+    bar.classList.remove('hidden');
+    document.getElementById('approval-bar-text').textContent =
+      `⚠️ PENDING YOUR APPROVAL: ${pending.length} item${pending.length !== 1 ? 's' : ''}`;
+  } else {
+    bar.classList.add('hidden');
+  }
+}
+
+// ═══════════════════════════════════════════════
+//  TAB 1: TODAY
+// ═══════════════════════════════════════════════
+function renderToday() {
+  const t = load('aidan_today_task', DEFAULTS.today);
+  const disp = document.getElementById('task-display');
+  disp.textContent = t.task;
+  disp.classList.toggle('completed', !!t.completed);
+  document.getElementById('time-display').textContent = t.timeEstimate;
+  const lines = (t.doNot || '').split('\n').filter(Boolean);
+  document.getElementById('donot-display').textContent =
+    lines.map(l => '• ' + l).join('\n') || '(none)';
+  const btn = document.getElementById('complete-btn');
+  if (t.completed) {
+    btn.textContent = '✓ Completed — Click to Undo';
+    btn.classList.add('done');
+  } else {
+    btn.textContent = 'Mark Complete ✓';
+    btn.classList.remove('done');
+  }
+}
+
+function startEditTask() {
+  const t = load('aidan_today_task', DEFAULTS.today);
+  const disp = document.getElementById('task-display');
+  const inp  = document.getElementById('task-input');
+  disp.style.display = 'none';
+  inp.style.display  = 'block';
+  inp.value = t.task;
+  inp.focus(); inp.select();
+}
+function saveTask() {
+  const inp  = document.getElementById('task-input');
+  const disp = document.getElementById('task-display');
+  const t = load('aidan_today_task', DEFAULTS.today);
+  t.task = inp.value.trim() || t.task;
+  save('aidan_today_task', t);
+  inp.style.display  = 'none';
+  disp.style.display = '';
+  renderToday();
+}
+
+function startEditTime() {
+  const t = load('aidan_today_task', DEFAULTS.today);
+  document.getElementById('time-display').style.display = 'none';
+  const inp = document.getElementById('time-input');
+  inp.style.display = 'inline-block';
+  inp.value = t.timeEstimate;
+  inp.focus(); inp.select();
+}
+function saveTime() {
+  const inp  = document.getElementById('time-input');
+  const disp = document.getElementById('time-display');
+  const t = load('aidan_today_task', DEFAULTS.today);
+  t.timeEstimate = inp.value.trim() || t.timeEstimate;
+  save('aidan_today_task', t);
+  inp.style.display  = 'none';
+  disp.style.display = '';
+  disp.textContent = t.timeEstimate;
+}
+
+function startEditDoNot() {
+  const t = load('aidan_today_task', DEFAULTS.today);
+  document.getElementById('donot-display').style.display = 'none';
+  const ta = document.getElementById('donot-textarea');
+  ta.style.display = 'block';
+  ta.value = t.doNot || '';
+  ta.focus();
+}
+function saveDoNot() {
+  const ta   = document.getElementById('donot-textarea');
+  const disp = document.getElementById('donot-display');
+  const t = load('aidan_today_task', DEFAULTS.today);
+  t.doNot = ta.value;
+  save('aidan_today_task', t);
+  ta.style.display   = 'none';
+  disp.style.display = '';
+  const lines = t.doNot.split('\n').filter(Boolean);
+  disp.textContent = lines.map(l => '• ' + l).join('\n') || '(none)';
+}
+
+function toggleComplete() {
+  const t = load('aidan_today_task', DEFAULTS.today);
+  t.completed = !t.completed;
+  save('aidan_today_task', t);
+  renderToday();
+  toast(t.completed ? '✅ Task marked complete!' : '↩️ Task uncompleted');
+}
+
+function copyAidanPrompt() {
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(SYSTEM_PROMPT)
+      .then(() => toast('📋 AIDAN prompt copied! Paste into ChatGPT/Claude.'))
+      .catch(() => fallbackCopy());
+  } else { fallbackCopy(); }
+}
+function fallbackCopy() {
+  const ta = document.createElement('textarea');
+  ta.value = SYSTEM_PROMPT;
+  ta.style.cssText = 'position:fixed;top:-9999px;left:-9999px';
+  document.body.appendChild(ta);
+  ta.select(); document.execCommand('copy');
+  document.body.removeChild(ta);
+  toast('📋 AIDAN prompt copied! Paste into ChatGPT/Claude.');
+}
+
+// ═══════════════════════════════════════════════
+//  TAB 2: IDEAS
+// ═══════════════════════════════════════════════
+function renderIdeas() {
+  const ideas = load('aidan_ideas', DEFAULTS.ideas);
+  document.querySelectorAll('.kanban-cards').forEach(col => col.innerHTML = '');
+  ideas.forEach(idea => {
+    const col = document.querySelector(`.kanban-cards[data-status="${idea.status}"]`);
+    if (!col) return;
+    col.appendChild(buildIdeaCard(idea));
+  });
+}
+
+function buildIdeaCard(idea) {
+  const div = document.createElement('div');
+  div.className = 'idea-card';
+  // stars
+  let starsHtml = '<div class="stars">';
+  for (let i = 1; i <= 5; i++) {
+    starsHtml += `<span class="star ${i <= idea.score ? 'filled' : ''}" data-id="${idea.id}" data-star="${i}" onclick="setStar(${idea.id},${i})">★</span>`;
+  }
+  starsHtml += '</div>';
+  div.innerHTML = `
+    <div class="idea-name">${escHtml(idea.name)}</div>
+    <div class="idea-desc">${escHtml(idea.desc)}</div>
+    ${starsHtml}
+    <select class="idea-status-select" onchange="changeIdeaStatus(${idea.id}, this.value)">
+      ${['Idea','Validating','Building','Live','Killed'].map(s =>
+        `<option${s===idea.status?' selected':''}>${s}</option>`).join('')}
+    </select>`;
+  return div;
+}
+
+function setStar(id, score) {
+  const ideas = load('aidan_ideas', DEFAULTS.ideas);
+  const idea = ideas.find(i => i.id === id);
+  if (!idea) return;
+  idea.score = score;
+  save('aidan_ideas', ideas);
+  renderIdeas();
+}
+
+function changeIdeaStatus(id, status) {
+  const ideas = load('aidan_ideas', DEFAULTS.ideas);
+  const idea = ideas.find(i => i.id === id);
+  if (!idea) return;
+  idea.status = status;
+  save('aidan_ideas', ideas);
+  renderIdeas();
+}
+
+function openAddIdea() {
+  document.getElementById('idea-name-input').value  = '';
+  document.getElementById('idea-desc-input').value  = '';
+  document.getElementById('idea-score-input').value = 3;
+  document.getElementById('idea-status-input').value = 'Idea';
+  document.getElementById('modal-overlay').classList.add('open');
+  document.getElementById('idea-name-input').focus();
+}
+function closeModal() {
+  document.getElementById('modal-overlay').classList.remove('open');
+}
+function closeModalIfBackdrop(e) {
+  if (e.target === document.getElementById('modal-overlay')) closeModal();
+}
+function saveNewIdea() {
+  const name = document.getElementById('idea-name-input').value.trim();
+  if (!name) { toast('⚠️ Name is required'); return; }
+  const ideas = load('aidan_ideas', DEFAULTS.ideas);
+  const maxId = ideas.reduce((m, i) => Math.max(m, i.id || 0), 0);
+  ideas.push({
+    id: maxId + 1,
+    name,
+    desc:   document.getElementById('idea-desc-input').value.trim(),
+    score:  parseInt(document.getElementById('idea-score-input').value) || 3,
+    status: document.getElementById('idea-status-input').value
+  });
+  save('aidan_ideas', ideas);
+  closeModal();
+  renderIdeas();
+  toast('💡 Idea added!');
+}
+
+// ═══════════════════════════════════════════════
+//  TAB 3: REVENUE
+// ═══════════════════════════════════════════════
+function renderRevenue() {
+  const rev = load('aidan_revenue', DEFAULTS.revenue);
+  document.getElementById('rev-mrr').textContent   = '$' + rev.mrr;
+  document.getElementById('rev-users').textContent  = rev.users;
+  document.getElementById('rev-day').textContent    = rev.dayCount;
+  document.getElementById('rev-sales').textContent  = '$' + rev.totalSales;
+  renderWeeklyInputs(rev);
+  renderChart();
+}
+
+function renderWeeklyInputs(rev) {
+  const row = document.getElementById('weekly-data-row');
+  row.innerHTML = '';
+  (rev.weeklyData || DEFAULTS.revenue.weeklyData).forEach((val, i) => {
+    const wrap = document.createElement('div');
+    wrap.style.cssText = 'display:flex;flex-direction:column;align-items:center;gap:4px;min-width:48px';
+    wrap.innerHTML = `
+      <input type="number" min="0" value="${val}"
+        style="width:48px;background:rgba(255,255,255,0.06);border:1px solid var(--glass-border);
+               border-radius:6px;padding:4px;color:var(--cyan);font-size:.75rem;text-align:center"
+        onchange="updateWeek(${i}, this.value)">
+      <span style="font-size:.65rem;color:var(--text-dim)">W${i+1}</span>`;
+    row.appendChild(wrap);
+  });
+}
+
+function updateWeek(idx, val) {
+  const rev = load('aidan_revenue', DEFAULTS.revenue);
+  rev.weeklyData[idx] = parseInt(val) || 0;
+  save('aidan_revenue', rev);
+  renderChart();
+}
+
+function editRevStat(which) {
+  const idMap = { mrr:'rev-mrr', users:'rev-users', day:'rev-day', sales:'rev-sales' };
+  const el = document.getElementById(idMap[which]);
+  if (!el || el.querySelector('input')) return;
+  const rev = load('aidan_revenue', DEFAULTS.revenue);
+  const curMap = { mrr: rev.mrr, users: rev.users, day: rev.dayCount, sales: rev.totalSales };
+  const inp = document.createElement('input');
+  inp.type = 'number'; inp.className = 'rev-stat-value editing';
+  inp.value = curMap[which]; inp.min = 0;
+  el.textContent = ''; el.appendChild(inp);
+  inp.focus(); inp.select();
+  function commit() {
+    const v = parseInt(inp.value) || 0;
+    const rev2 = load('aidan_revenue', DEFAULTS.revenue);
+    if (which === 'mrr')   { rev2.mrr = v; const w = rev2.weeklyData; w[w.length-1] = v; }
+    if (which === 'users') rev2.users = v;
+    if (which === 'day')   rev2.dayCount = Math.max(1, Math.min(90, v));
+    if (which === 'sales') rev2.totalSales = v;
+    save('aidan_revenue', rev2);
+    refreshStatsBar();
+    renderRevenue();
+  }
+  inp.onblur = commit;
+  inp.onkeydown = e => { if (e.key==='Enter') inp.blur(); };
+}
+
+function renderChart() {
+  const rev = load('aidan_revenue', DEFAULTS.revenue);
+  const data = rev.weeklyData || DEFAULTS.revenue.weeklyData;
+  const svg = document.getElementById('rev-chart');
+  const W = 640, H = 200, PL = 44, PR = 16, PT = 16, PB = 32;
+  const chartW = W - PL - PR, chartH = H - PT - PB;
+  const maxVal = Math.max(500, ...data, 1);
+  const target = 500;
+
+  const xPos = i => PL + (i / (data.length - 1)) * chartW;
+  const yPos = v => PT + chartH - (v / maxVal) * chartH;
+
+  // Y grid lines
+  let yLines = '';
+  [0, 100, 200, 300, 400, 500].forEach(v => {
+    if (v > maxVal + 10) return;
+    const y = yPos(v);
+    yLines += `<line x1="${PL}" y1="${y}" x2="${W-PR}" y2="${y}" stroke="rgba(255,255,255,0.06)" stroke-width="1"/>`;
+    yLines += `<text x="${PL-4}" y="${y+4}" fill="#64748b" font-size="9" text-anchor="end">$${v}</text>`;
+  });
+
+  // X labels
+  let xLabels = '';
+  data.forEach((_, i) => {
+    xLabels += `<text x="${xPos(i)}" y="${H-6}" fill="#64748b" font-size="9" text-anchor="middle">W${i+1}</text>`;
+  });
+
+  // Target dotted line
+  const ty = yPos(target);
+  const targetLine = `<line x1="${PL}" y1="${ty}" x2="${W-PR}" y2="${ty}" stroke="#fbbf24" stroke-width="1.5" stroke-dasharray="6,4" opacity="0.8"/>
+    <text x="${W-PR+2}" y="${ty+4}" fill="#fbbf24" font-size="9">$500</text>`;
+
+  // Polyline
+  const pts = data.map((v,i) => `${xPos(i)},${yPos(v)}`).join(' ');
+  // Area fill path
+  const areaPath = `M${xPos(0)},${yPos(0)} ` + data.map((v,i) => `L${xPos(i)},${yPos(v)}`).join(' ') +
+    ` L${xPos(data.length-1)},${yPos(0)} Z`;
+
+  // Dots
+  let dots = '';
+  data.forEach((v, i) => {
+    if (v > 0)
+      dots += `<circle cx="${xPos(i)}" cy="${yPos(v)}" r="4" fill="#a78bfa" stroke="#0a0a1a" stroke-width="2"/>`;
+  });
+
+  svg.innerHTML = `
+    <defs>
+      <linearGradient id="areaGrad" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stop-color="#a78bfa" stop-opacity="0.35"/>
+        <stop offset="100%" stop-color="#a78bfa" stop-opacity="0"/>
+      </linearGradient>
+    </defs>
+    ${yLines}
+    ${xLabels}
+    ${targetLine}
+    <path d="${areaPath}" fill="url(#areaGrad)"/>
+    <polyline points="${pts}" fill="none" stroke="#a78bfa" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
+    ${dots}`;
+}
+
+// ═══════════════════════════════════════════════
+//  TAB 4: PRODUCTS
+// ═══════════════════════════════════════════════
+const PRODUCT_LIST = ["CareerScore MU", "Excel Report Generator", "SMB Assistant"];
+
+function renderProducts() {
+  const prods = load('aidan_products', DEFAULTS.products);
+  const container = document.getElementById('products-container');
+  container.innerHTML = '';
+
+  PRODUCT_LIST.forEach(name => {
+    const pdata = prods[name] || DEFAULTS.products[name] || { stage: 'Idea', checklist: [false,false,false,false,false] };
+    const stageIdx = PIPELINE_STAGES.indexOf(pdata.stage);
+
+    const stageClass = pdata.stage === 'Build' ? 'build' :
+                       pdata.stage === 'Live' || pdata.stage === 'Revenue' ? 'live' : 'idea';
+    const badgeClass = 'badge-' + stageClass;
+    const badgeLabel = pdata.stage;
+
+    // Pipeline HTML
+    const pipeHtml = PIPELINE_STAGES.map((s, i) => {
+      const cls = i < stageIdx ? 'done' : i === stageIdx ? 'active' : '';
+      return `<div class="pipe-stage ${cls}">${s}</div>`;
+    }).join('');
+
+    // Checklist HTML
+    const clHtml = CHECKLIST_LABELS.map((lbl, i) => {
+      const checked = pdata.checklist[i] || false;
+      return `<div class="checklist-item ${checked ? 'checked' : ''}">
+        <input type="checkbox" id="cl-${escAttr(name)}-${i}" ${checked ? 'checked' : ''}
+          onchange="toggleChecklist('${escAttr(name)}',${i},this.checked)">
+        <label for="cl-${escAttr(name)}-${i}">${escHtml(lbl)}</label>
+      </div>`;
+    }).join('');
+
+    const shortName = name === 'CareerScore MU' ? 'CareerScore MU' :
+                      name === 'Excel Report Generator' ? 'Excel Report Gen' : 'SMB Assistant';
+
+    const card = document.createElement('div');
+    card.className = 'card product-card';
+    card.innerHTML = `
+      <div class="product-header">
+        <span class="product-name">${escHtml(shortName)}</span>
+        <span class="badge ${badgeClass}">${badgeLabel}</span>
+        <select class="idea-status-select" style="width:auto;margin-left:auto"
+                onchange="changeProductStage('${escAttr(name)}',this.value)">
+          ${PIPELINE_STAGES.map(s => `<option${s===pdata.stage?' selected':''}>${s}</option>`).join('')}
+        </select>
+      </div>
+      <div class="section-title">Pipeline</div>
+      <div class="pipeline">${pipeHtml}</div>
+      <div class="section-title" style="margin-top:14px">Launch Checklist</div>
+      ${clHtml}`;
+    container.appendChild(card);
+  });
+}
+
+function changeProductStage(name, stage) {
+  const prods = load('aidan_products', DEFAULTS.products);
+  if (!prods[name]) prods[name] = { stage: 'Idea', checklist: [false,false,false,false,false] };
+  prods[name].stage = stage;
+  save('aidan_products', prods);
+  renderProducts();
+}
+
+function toggleChecklist(name, idx, checked) {
+  const prods = load('aidan_products', DEFAULTS.products);
+  if (!prods[name]) prods[name] = { stage: 'Idea', checklist: [false,false,false,false,false] };
+  prods[name].checklist[idx] = checked;
+  save('aidan_products', prods);
+  // update DOM class only, no full re-render to preserve checkbox state
+  const items = document.querySelectorAll(`#products-container .checklist-item`);
+  // We re-render for simplicity but it's fine
+  renderProducts();
+}
+
+// ═══════════════════════════════════════════════
+//  TAB 5: AIDAN
+// ═══════════════════════════════════════════════
+function renderAidan() {
+  document.getElementById('system-prompt-block').textContent = SYSTEM_PROMPT;
+  renderApprovals();
+  renderSettings();
+}
+
+function renderApprovals() {
+  const items = load('aidan_approvals', []);
+  const pending = items.filter(i => i.status === 'pending');
+  const list = document.getElementById('approval-list');
+  if (pending.length === 0) {
+    list.innerHTML = '<div class="empty-state">✅ No pending approvals</div>';
+    return;
+  }
+  list.innerHTML = pending.map(item => `
+    <div class="approval-item">
+      <span class="approval-desc">${escHtml(item.description)}</span>
+      <span class="type-badge type-${item.type}">${item.type}</span>
+      <button class="btn btn-success" style="padding:4px 12px;font-size:.75rem"
+              onclick="resolveApproval('${item.id}','approved')">✓ Approve</button>
+      <button class="btn btn-danger" style="padding:4px 12px;font-size:.75rem"
+              onclick="resolveApproval('${item.id}','rejected')">✗ Reject</button>
+    </div>`).join('');
+  refreshApprovalBar();
+}
+
+function resolveApproval(id, status) {
+  const items = load('aidan_approvals', []);
+  const item = items.find(i => i.id === id);
+  if (!item) return;
+  item.status = status;
+  save('aidan_approvals', items);
+  renderApprovals();
+  refreshApprovalBar();
+  toast(status === 'approved' ? '✅ Approved!' : '❌ Rejected.');
+}
+
+const TEST_APPROVAL_TYPES = ['Money','Publish','Send','Launch'];
+const TEST_APPROVAL_DESCS = [
+  'Buy domain for CareerScore.mu ($12/yr)',
+  'Publish landing page to production',
+  'Send welcome email to beta users',
+  'Launch Product Hunt listing',
+  'Purchase Airtable Pro plan ($20/mo)',
+  'Post on LinkedIn about CareerScore MU'
+];
+let _testIdx = 0;
+function addTestApproval() {
+  const items = load('aidan_approvals', []);
+  const desc  = TEST_APPROVAL_DESCS[_testIdx % TEST_APPROVAL_DESCS.length];
+  const type  = TEST_APPROVAL_TYPES[_testIdx % TEST_APPROVAL_TYPES.length];
+  _testIdx++;
+  items.push({ id: Date.now().toString(), description: desc, type, status: 'pending' });
+  save('aidan_approvals', items);
+  renderApprovals();
+  refreshApprovalBar();
+  toast('⚠️ Test approval added');
+}
+
+function renderSettings() {
+  const set = load('aidan_settings', DEFAULTS.settings);
+  const slider = document.getElementById('hours-slider');
+  slider.value = set.maxHours || 3;
+  document.getElementById('hours-display').textContent = (set.maxHours || 3) + 'h';
+  const sel = document.getElementById('product-select');
+  sel.value = set.currentProduct || 'CareerScore MU';
+}
+
+function updateHours(val) {
+  const set = load('aidan_settings', DEFAULTS.settings);
+  set.maxHours = parseInt(val);
+  save('aidan_settings', set);
+  document.getElementById('hours-display').textContent = val + 'h';
+}
+
+function updateProduct(val) {
+  const set = load('aidan_settings', DEFAULTS.settings);
+  set.currentProduct = val;
+  save('aidan_settings', set);
+  refreshStatsBar();
+  toast('🎯 Focus switched to ' + val);
+}
+
+// ═══════════════════════════════════════════════
+//  UTILS
+// ═══════════════════════════════════════════════
+function escHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+function escAttr(s) {
+  return String(s).replace(/'/g,"\\'").replace(/"/g,'\\"');
+}
+
+// ═══════════════════════════════════════════════
+//  BOOTSTRAP
+// ═══════════════════════════════════════════════
+function init() {
+  initStorage();
+  refreshStatsBar();
+  refreshApprovalBar();
+  renderToday();
+  renderIdeas();
+  renderRevenue();
+  renderProducts();
+  renderAidan();
+}
+
+document.addEventListener('DOMContentLoaded', init);
+</script>
+</body>
+</html>

@@ -1,17 +1,18 @@
 """
-Centralized Configuration Management for the Agentic Framework.
+Centralized Configuration Management for AIDAN-OS.
 
-This module provides type-safe, validated configuration using Pydantic.
-All environment variables and settings are defined here.
+Uses pydantic BaseModel for schema definitions.
+Env-var loading is handled via os.environ.get() directly since
+pydantic-settings is not a dependency of AIDAN-OS.
 """
 
 import os
 from typing import Dict, Optional, List, Literal
 from pydantic import Field, validator
-from pydantic_settings import BaseSettings
+from pydantic import BaseModel
 
 
-class ModelConfig(BaseSettings):
+class ModelConfig(BaseModel):
     """Configuration for a specific LLM model."""
     
     model: str
@@ -20,7 +21,7 @@ class ModelConfig(BaseSettings):
     top_p: float = Field(default=0.9, ge=0.0, le=1.0)
 
 
-class OllamaSettings(BaseSettings):
+class OllamaSettings(BaseModel):
     """Ollama-specific configuration."""
     
     host: str = Field(default="http://localhost:11434")
@@ -35,7 +36,7 @@ class OllamaSettings(BaseSettings):
         return v.rstrip('/')
 
 
-class APISettings(BaseSettings):
+class APISettings(BaseModel):
     """API server configuration."""
     
     host: str = Field(default="0.0.0.0")
@@ -55,7 +56,7 @@ class APISettings(BaseSettings):
         return v
 
 
-class HTTPClientSettings(BaseSettings):
+class HTTPClientSettings(BaseModel):
     """HTTP client configuration."""
     
     timeout: int = Field(default=30, ge=1, le=300)
@@ -66,7 +67,7 @@ class HTTPClientSettings(BaseSettings):
     enable_http2: bool = Field(default=True)
 
 
-class LoggingSettings(BaseSettings):
+class LoggingSettings(BaseModel):
     """Logging configuration."""
     
     level: Literal["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"] = Field(default="INFO")
@@ -76,7 +77,7 @@ class LoggingSettings(BaseSettings):
     enable_performance_logging: bool = Field(default=True)
 
 
-class FeatureFlags(BaseSettings):
+class FeatureFlags(BaseModel):
     """Feature flags for enabling/disabling functionality."""
     
     use_mock_kb: bool = Field(default=False)
@@ -86,7 +87,7 @@ class FeatureFlags(BaseSettings):
     enable_caching: bool = Field(default=True)
 
 
-class ResourceLimits(BaseSettings):
+class ResourceLimits(BaseModel):
     """Resource usage limits."""
     
     max_queued_tasks_per_agent: int = Field(default=100, ge=10, le=1000)
@@ -95,7 +96,7 @@ class ResourceLimits(BaseSettings):
     request_rate_limit: int = Field(default=60, ge=1, le=1000)  # per minute
 
 
-class Settings(BaseSettings):
+class Settings(BaseModel):
     """Main settings class combining all configuration sections."""
     
     # Application info
