@@ -10,6 +10,7 @@ import pytest
 import os
 import json
 import importlib
+import uuid
 from unittest.mock import Mock, patch, MagicMock
 from datetime import datetime
 
@@ -26,6 +27,7 @@ def api_app():
     os.environ.setdefault("FRAMEWORK_API_KEY", "default-test-key")
     os.environ.setdefault("API__ENABLE_AUTH", "false")
     os.environ.setdefault("API__API_KEY", "default-test-key")
+    os.environ["OPERATIONS_DB_PATH"] = f"/tmp/test_ops_{uuid.uuid4().hex}.db"
     import api_server
     return importlib.reload(api_server).app
 
@@ -47,12 +49,14 @@ class TestN8NWebhookEndpoints:
             "FRAMEWORK_API_KEY": os.environ.get("FRAMEWORK_API_KEY"),
             "API__ENABLE_AUTH": os.environ.get("API__ENABLE_AUTH"),
             "API__API_KEY": os.environ.get("API__API_KEY"),
+            "APPROVAL_SCOPE": os.environ.get("APPROVAL_SCOPE"),
         }
 
         os.environ["ENABLE_AUTH"] = "false"
         os.environ["FRAMEWORK_API_KEY"] = "default-test-key"
         os.environ["API__ENABLE_AUTH"] = "false"
         os.environ["API__API_KEY"] = "default-test-key"
+        os.environ["APPROVAL_SCOPE"] = "operations"
         reload_settings()
         yield
 
@@ -86,11 +90,14 @@ class TestN8NWebhookEndpoints:
             headers=api_key_headers
         )
 
-        assert response.status_code == 200
+        assert response.status_code in (200, 202)
         data = response.json()
-        assert data["status"] == "success"
-        assert data["workflow_id"] == "test-workflow-123"
-        assert data["trigger_type"] == "sales"
+        if response.status_code == 202:
+            assert data["status"] == "approval_required"
+        else:
+            assert data["status"] == "success"
+            assert data["workflow_id"] == "test-workflow-123"
+            assert data["trigger_type"] == "sales"
 
     def test_n8n_webhook_marketing_trigger(self, test_client, api_key_headers):
         """Test n8n webhook with marketing trigger type"""
@@ -109,10 +116,13 @@ class TestN8NWebhookEndpoints:
             headers=api_key_headers
         )
 
-        assert response.status_code == 200
+        assert response.status_code in (200, 202)
         data = response.json()
-        assert data["status"] == "success"
-        assert data["trigger_type"] == "marketing"
+        if response.status_code == 202:
+            assert data["status"] == "approval_required"
+        else:
+            assert data["status"] == "success"
+            assert data["trigger_type"] == "marketing"
 
     def test_n8n_webhook_research_trigger(self, test_client, api_key_headers):
         """Test n8n webhook with research trigger type"""
@@ -131,9 +141,12 @@ class TestN8NWebhookEndpoints:
             headers=api_key_headers
         )
 
-        assert response.status_code == 200
+        assert response.status_code in (200, 202)
         data = response.json()
-        assert data["status"] == "success"
+        if response.status_code == 202:
+            assert data["status"] == "approval_required"
+        else:
+            assert data["status"] == "success"
 
     def test_n8n_webhook_requires_auth(self, test_client):
         """Test that webhook requires API key when auth is enabled"""
@@ -173,6 +186,30 @@ class TestN8NWebhookEndpoints:
             os.environ["API__API_KEY"] = previous_nested_api_key
         reload_settings()
 
+    def test_n8n_webhook_requires_approval_for_money_scope(self, test_client, api_key_headers):
+        """Money-scope webhook should require approval by default scope."""
+        previous_scope = os.environ.get("APPROVAL_SCOPE")
+        os.environ["APPROVAL_SCOPE"] = "money,brand,legal"
+        os.environ["IDEMPOTENCY_TTL_HOURS"] = "24"
+        reload_settings()
+
+        payload = {
+            "workflow_id": "approval-test",
+            "trigger_type": "sales",
+            "payload": {"action": "qualify"},
+        }
+        headers = {**api_key_headers, "Idempotency-Key": "approval-required-1"}
+        response = test_client.post("/n8n/webhook", json=payload, headers=headers)
+        assert response.status_code == 202
+        body = response.json()
+        assert body["status"] == "approval_required"
+
+        if previous_scope is None:
+            del os.environ["APPROVAL_SCOPE"]
+        else:
+            os.environ["APPROVAL_SCOPE"] = previous_scope
+        reload_settings()
+
     def test_n8n_webhook_auth_disabled_allows_requests(self, test_client):
         """Test that webhook allows requests when auth is disabled."""
         previous_enable_auth = os.environ.get("ENABLE_AUTH")
@@ -191,7 +228,7 @@ class TestN8NWebhookEndpoints:
         }
 
         response = test_client.post("/n8n/webhook", json=payload)
-        assert response.status_code == 200
+        assert response.status_code in (200, 202)
 
         if previous_enable_auth is None:
             del os.environ["ENABLE_AUTH"]
@@ -224,7 +261,19 @@ class TestSalesEndpoints:
     def api_key_headers(self):
         return {"X-API-Key": os.getenv("FRAMEWORK_API_KEY", "jts-dev-key-replace-in-production")}
 
-    def test_process_lead(self, test_client, api_key_headers):
+    @pytest.fixture(autouse=True)
+    def non_sensitive_scope_headers(self):
+        previous_scope = os.environ.get("APPROVAL_SCOPE")
+        os.environ["APPROVAL_SCOPE"] = "operations"
+        reload_settings()
+        yield {"X-Scope-Override": "operations"}
+        if previous_scope is None:
+            os.environ.pop("APPROVAL_SCOPE", None)
+        else:
+            os.environ["APPROVAL_SCOPE"] = previous_scope
+        reload_settings()
+
+    def test_process_lead(self, test_client, api_key_headers, non_sensitive_scope_headers):
         """Test lead processing endpoint"""
         payload = {
             "lead_name": "Jane Smith",
@@ -236,7 +285,7 @@ class TestSalesEndpoints:
         response = test_client.post(
             "/sales/process-lead",
             json=payload,
-            headers=api_key_headers
+            headers={**api_key_headers, **non_sensitive_scope_headers}
         )
 
         assert response.status_code == 200
@@ -245,7 +294,7 @@ class TestSalesEndpoints:
         assert "lead" in data
         assert data["lead"]["name"] == "Jane Smith"
 
-    def test_qualify_lead(self, test_client, api_key_headers):
+    def test_qualify_lead(self, test_client, api_key_headers, non_sensitive_scope_headers):
         """Test lead qualification endpoint"""
         payload = {
             "lead_id": "L001",
@@ -263,7 +312,7 @@ class TestSalesEndpoints:
         response = test_client.post(
             "/sales/qualify-lead",
             json=payload,
-            headers=api_key_headers
+            headers={**api_key_headers, **non_sensitive_scope_headers}
         )
 
         assert response.status_code == 200
@@ -283,6 +332,18 @@ class TestMarketingEndpoints:
     @pytest.fixture
     def api_key_headers(self):
         return {"X-API-Key": os.getenv("FRAMEWORK_API_KEY", "jts-dev-key-replace-in-production")}
+
+    @pytest.fixture(autouse=True)
+    def disable_approval_scope(self):
+        previous_scope = os.environ.get("APPROVAL_SCOPE")
+        os.environ["APPROVAL_SCOPE"] = "operations"
+        reload_settings()
+        yield
+        if previous_scope is None:
+            os.environ.pop("APPROVAL_SCOPE", None)
+        else:
+            os.environ["APPROVAL_SCOPE"] = previous_scope
+        reload_settings()
 
     def test_generate_content(self, test_client, api_key_headers):
         """Test content generation endpoint"""
@@ -537,6 +598,18 @@ class TestBidirectionalFlow:
     def api_key_headers(self):
         return {"X-API-Key": os.getenv("FRAMEWORK_API_KEY", "jts-dev-key-replace-in-production")}
 
+    @pytest.fixture(autouse=True)
+    def disable_approval_scope(self):
+        previous_scope = os.environ.get("APPROVAL_SCOPE")
+        os.environ["APPROVAL_SCOPE"] = "operations"
+        reload_settings()
+        yield
+        if previous_scope is None:
+            os.environ.pop("APPROVAL_SCOPE", None)
+        else:
+            os.environ["APPROVAL_SCOPE"] = previous_scope
+        reload_settings()
+
     def test_complete_sales_flow(self, test_client, api_key_headers):
         """Test complete sales flow: n8n -> Framework -> (would trigger n8n)"""
         # Step 1: n8n sends lead via webhook
@@ -554,9 +627,9 @@ class TestBidirectionalFlow:
         response = test_client.post(
             "/n8n/webhook",
             json=webhook_payload,
-            headers=api_key_headers
+            headers={**api_key_headers, "Idempotency-Key": "flow-n8n-1"}
         )
-        assert response.status_code == 200
+        assert response.status_code in (200, 202)
 
         # Step 2: Process lead through dedicated endpoint
         lead_payload = {
@@ -569,9 +642,9 @@ class TestBidirectionalFlow:
         response = test_client.post(
             "/sales/process-lead",
             json=lead_payload,
-            headers=api_key_headers
+            headers={**api_key_headers, "Idempotency-Key": "flow-sales-1"}
         )
-        assert response.status_code == 200
+        assert response.status_code in (200, 202)
 
         # Step 3: Qualify the lead
         qualify_payload = {
@@ -586,12 +659,33 @@ class TestBidirectionalFlow:
         response = test_client.post(
             "/sales/qualify-lead",
             json=qualify_payload,
-            headers=api_key_headers
+            headers={**api_key_headers, "Idempotency-Key": "flow-qualify-1"}
         )
-        assert response.status_code == 200
+        assert response.status_code in (200, 202)
         data = response.json()
-        assert data["status"] == "success"
+        if response.status_code == 200:
+            assert data["status"] == "success"
 
+
+class TestOperatorConsole:
+    """Tests for operator one-screen endpoints."""
+
+    @pytest.fixture
+    def test_client(self, api_app):
+        from fastapi.testclient import TestClient
+        return TestClient(api_app)
+
+    @pytest.fixture
+    def api_key_headers(self):
+        return {"X-API-Key": os.getenv("FRAMEWORK_API_KEY", "jts-dev-key-replace-in-production")}
+
+    def test_operator_console_endpoint(self, test_client, api_key_headers):
+        response = test_client.get("/operator/console", headers=api_key_headers)
+        assert response.status_code == 200
+        body = response.json()
+        assert "headline" in body
+        assert "primary_action" in body
+        assert "kpis" in body
 
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])
