@@ -1,5 +1,5 @@
-# Import these workflows in order:
-# 
+# Import these canonical workflows in order:
+#
 # 1. Infrastructure & Error Handling (MUST BE FIRST)
 13_error_handling_workflow.json
 15_api_bridge_k8_connection.json
@@ -23,7 +23,10 @@
 12_security_department_workflow.json
 
 # 5. Monitoring & Logging
-14_monitoring_logging_workflow_fixed.json
+14_monitoring_logging_workflow.json
 
 # 6. Assessment Workflow (if using)
-# NEW_CLIENT_ASSESSMENT_TEMPLATE.json
+NEW_CLIENT_ASSESSMENT_TEMPLATE.json
+
+# Legacy workflow variants have been moved to:
+# n8n_workflows/archive/

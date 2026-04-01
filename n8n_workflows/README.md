@@ -8,30 +8,9 @@ Your n8n instance: **https://jtsinc.app.n8n.cloud**
 
 Follow this order to ensure dependencies are met:
 
-```
-1. Infrastructure (import first)
-   - 13_error_handling_workflow.json
-   - 15_api_bridge_k8_connection.json
-
-2. Main Gateway
-   - 1_main_api_workflow.json
-
-3. Core Services
-   - 2_chief_ai_agent_workflow.json
-   - 5_knowledge_base_integration_workflow.json
-   - 6_mcp_integration_workflow.json
-
-4. Department Workflows (Sales & Marketing focus)
-   - 3_sales_department_workflow.json
-   - 4_outbound_sales_manager_workflow.json
-   - 7_inbound_sales_manager_workflow.json
-   - 8_marketing_department_workflow.json
-
-5. Phase 5 (Advanced Sales Automation)
-   - phase5/PHASE5_NURTURING_SEQUENCE.json
-   - phase5/PHASE5_NURTURE_EMAIL_SENDER.json
-   - phase5/PHASE5_PROPOSAL_APPROVAL_WEBHOOK.json
-```
+Canonical workflow import order is defined in `import_order.txt`.
+Obsolete variants (e.g. `*_fixed`, `*_backup`, older `phase5` versions)
+have been moved to `n8n_workflows/archive/`.
 
 ---
 
@@ -84,6 +63,22 @@ response = requests.post(N8N_MCP_URL, headers=headers, json=payload)
 ---
 
 ## Workflow Catalog
+
+### Canonical Active Workflow Count
+
+- Active JSON workflow files: **49**
+- Archived workflow variants: `n8n_workflows/archive/`
+
+Count command:
+
+```bash
+python3 - <<'PY'
+import pathlib
+root = pathlib.Path("n8n_workflows")
+active = [p for p in root.rglob("*.json") if "archive" not in p.parts]
+print(len(active))
+PY
+```
 
 ### Sales Department
 
@@ -154,7 +149,7 @@ Set these in n8n Settings > Variables:
 │                                                                 │
 │  ┌──────────────┐   ┌──────────────┐   ┌──────────────┐        │
 │  │   Webhooks   │   │  Workflows   │   │ Credentials  │        │
-│  │  /sales-*    │   │  87 total    │   │  HubSpot     │        │
+│  │  /sales-*    │   │  59 active   │   │  HubSpot     │        │
 │  │  /marketing  │   │              │   │  Gmail       │        │
 │  │  /proposal   │   │              │   │  Supabase    │        │
 │  └──────┬───────┘   └──────┬───────┘   └──────────────┘        │
@@ -265,7 +260,9 @@ n8n_workflows/
     ├── PHASE5_NURTURING_SEQUENCE.json
     ├── PHASE5_NURTURE_EMAIL_SENDER.json
     ├── PHASE5_PROPOSAL_APPROVAL_WEBHOOK.json
-    └── PHASE5_ASSESSMENT_WITH_PDF_CRM_FIXED_V11.json  # Latest
+    └── PHASE5_ASSESSMENT_WITH_PDF_CRM_FIXED_V11.json  # Latest active
+│
+└── archive/                    # Obsolete/experimental variants
 ```
 
 ---

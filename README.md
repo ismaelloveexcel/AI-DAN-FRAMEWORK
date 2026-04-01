@@ -12,7 +12,7 @@ This isn't just another AI agent creation tool. It's a blueprint for architectin
 |--------|-------|
 | **Departments** | 7 |
 | **AI Agents** | 15+ |
-| **n8n Workflows** | 87 |
+| **n8n Workflows** | 49 active (71 total incl. archive) |
 | **Tool Integrations** | 10+ |
 
 ---
@@ -72,7 +72,8 @@ This isn't just another AI agent creation tool. It's a blueprint for architectin
 
 ## n8n Workflow Integration
 
-The framework includes **87 pre-built n8n workflows** for business process automation:
+The framework includes **49 active n8n workflows** for business process automation
+(**71 total JSON workflows including archived variants**):
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
@@ -82,7 +83,7 @@ The framework includes **87 pre-built n8n workflows** for business process autom
 │                                                                 │
 │  ┌──────────────┐   ┌──────────────┐   ┌──────────────┐        │
 │  │   Webhooks   │   │  Workflows   │   │ Credentials  │        │
-│  │  /sales-*    │   │  87 total    │   │  HubSpot     │        │
+│  │  /sales-*    │   │  49 active   │   │  HubSpot     │        │
 │  │  /marketing  │   │              │   │  Gmail/SMTP  │        │
 │  │  /proposal   │   │              │   │  Supabase    │        │
 │  └──────┬───────┘   └──────┬───────┘   └──────────────┘        │
@@ -245,7 +246,7 @@ agentic-framework/
 │   ├── agent.py         # BaseAgent class
 │   ├── llm_singleton.py # LLM management
 │   └── tools.py         # Tool implementations
-├── n8n_workflows/       # 87 workflow templates
+├── n8n_workflows/       # 71 workflow templates
 │   ├── phase5/          # Advanced nurture sequences
 │   └── README.md        # Import instructions
 ├── demo-ui/
