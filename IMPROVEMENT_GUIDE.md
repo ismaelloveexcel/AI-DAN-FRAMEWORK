@@ -125,7 +125,7 @@ use_mock = is_mock_mode()  # or settings.features.use_mock_kb
 - [ ] Update `api_server.py` to use centralized config
 - [ ] Update `core/llm_singleton.py` to use centralized config
 - [ ] Update `core/agent.py` to use centralized config
-- [ ] Create `.env.example` with all configuration options
+- [ ] Update `.env.example` to include all configuration options using nested `__` env var naming
 - [ ] Document all configuration options in README
 - [ ] Add configuration validation at startup
 
