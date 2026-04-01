@@ -115,3 +115,24 @@ def test_idempotency_replay():
 
     _reset_env(saved)
     reload_settings()
+
+
+def test_operator_console_ui_page():
+    keys = ["ENABLE_AUTH", "FRAMEWORK_API_KEY", "APPROVAL_SCOPE", "OPERATIONS_DB_PATH"]
+    saved = {k: os.environ.get(k) for k in keys}
+    _set_env("ENABLE_AUTH", "true")
+    _set_env("FRAMEWORK_API_KEY", "test-operator-key")
+    _set_env("APPROVAL_SCOPE", "money,brand,legal")
+    reload_settings()
+
+    client = _load_client()
+    response = client.get("/operator/console/ui", headers={"X-API-Key": "test-operator-key"})
+    assert response.status_code == 200
+    assert response.headers.get("content-type", "").startswith("text/html")
+    body = response.text
+    assert "Operator Console" in body
+    assert "Primary action" in body
+    assert "Pending approvals" in body
+
+    _reset_env(saved)
+    reload_settings()

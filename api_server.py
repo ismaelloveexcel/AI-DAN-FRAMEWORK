@@ -9,7 +9,7 @@ This server demonstrates the core capabilities of the framework.
 from fastapi import FastAPI, HTTPException, Security, Depends, Header, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import APIKeyHeader
-from fastapi.responses import JSONResponse
+from fastapi.responses import HTMLResponse, JSONResponse
 from pydantic import BaseModel, Field
 from typing import Dict, List, Any, Optional, Tuple, Callable
 import os
@@ -34,6 +34,7 @@ from agents.executive_chat import ExecutiveChatAgent
 from core.config import get_settings, reload_settings
 from core.policy import ApprovalPolicy
 from core.operations import OperationsStore
+from core.operator_console_ui import build_operator_console_html
 
 settings = get_settings()
 
@@ -1217,6 +1218,11 @@ def operator_console(api_key: str = Depends(verify_api_key)):
         "kill_switch": kill,
         "timestamp": _now_iso(),
     }
+
+
+@app.get("/operator/console/ui", response_class=HTMLResponse)
+def operator_console_ui(api_key: str = Depends(verify_api_key)):
+    return HTMLResponse(content=build_operator_console_html(), status_code=200)
 
 
 @app.get("/operator/approvals")
