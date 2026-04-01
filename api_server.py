@@ -26,7 +26,28 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 # Import framework components
 from agents.examples import ResearchAgent, WriterAgent
 from agents.executive_chat import ExecutiveChatAgent
-from core.crew import CrewBuilder
+from core.config import get_settings, reload_settings
+from core.policy import ApprovalPolicy
+
+settings = get_settings()
+
+
+def _load_runtime_settings():
+    """Reload settings so runtime auth toggles are reflected immediately."""
+    runtime_settings = reload_settings()
+    if runtime_settings.api.enable_auth and not runtime_settings.api.api_key:
+        raise RuntimeError(
+            "Authentication is enabled but no API key is configured. "
+            "Set FRAMEWORK_API_KEY (or API_KEY/API__API_KEY) before startup."
+        )
+    return runtime_settings
+
+
+settings = _load_runtime_settings()
+approval_policy = ApprovalPolicy.from_settings()
+
+# Do not allow wildcard origin with credentials (invalid/unsafe browser combo).
+cors_allow_credentials = "*" not in settings.api.cors_origins
 
 # Initialize FastAPI app
 app = FastAPI(
@@ -38,19 +59,28 @@ app = FastAPI(
 # Add CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
+    allow_origins=settings.api.cors_origins,
+    allow_credentials=cors_allow_credentials,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+def _approval_metadata(action_scope: str) -> Dict[str, Any]:
+    """Attach approval policy metadata to action responses."""
+    return {
+        "scope": action_scope,
+        "requires_manual_approval": approval_policy.requires_manual_approval(action_scope),
+    }
 
 # API Key Security (for n8n integration)
 api_key_header = APIKeyHeader(name="X-API-Key", auto_error=False)
 
 async def verify_api_key(api_key: str = Security(api_key_header)) -> str:
     """Verify API key for protected endpoints"""
-    expected_key = os.getenv("FRAMEWORK_API_KEY")
-    enable_auth = os.getenv("ENABLE_AUTH", "false").lower() == "true"
+    runtime_settings = _load_runtime_settings()
+    expected_key = runtime_settings.api.api_key
+    enable_auth = runtime_settings.api.enable_auth
 
     if not enable_auth:
         return "auth_disabled"
@@ -389,6 +419,7 @@ async def n8n_webhook(
             "workflow_id": request.workflow_id,
             "trigger_type": request.trigger_type,
             "result": result,
+            "approval": _approval_metadata("money"),
             "timestamp": datetime.now().isoformat()
         }
     except Exception as e:
@@ -465,6 +496,7 @@ async def process_lead(
                 "company": request.lead_company
             },
             "analysis": response.get("message", "Analysis complete"),
+            "approval": _approval_metadata("money"),
             "timestamp": datetime.now().isoformat()
         }
     except Exception as e:
@@ -510,6 +542,7 @@ async def qualify_lead(
             "lead_id": request.lead_id,
             "qualification": response.get("message", "Qualification complete"),
             "icp_criteria_used": icp,
+            "approval": _approval_metadata("money"),
             "timestamp": datetime.now().isoformat()
         }
     except Exception as e:
@@ -560,6 +593,7 @@ async def generate_marketing_content(
             "campaign_name": request.campaign_name,
             "content_type": content_type,
             "content": result,
+            "approval": _approval_metadata("brand"),
             "timestamp": datetime.now().isoformat()
         }
     except Exception as e:
@@ -601,6 +635,7 @@ async def analyze_campaign(
             "status": "success",
             "campaign_name": request.campaign_name,
             "analysis": response.get("message", "Analysis complete"),
+            "approval": _approval_metadata("brand"),
             "timestamp": datetime.now().isoformat()
         }
     except Exception as e:

@@ -5,10 +5,11 @@ This module provides type-safe, validated configuration using Pydantic.
 All environment variables and settings are defined here.
 """
 
+import json
 import os
-from typing import Dict, Optional, List, Literal
-from pydantic import Field, validator
-from pydantic_settings import BaseSettings
+from typing import Annotated, Dict, Optional, List, Literal
+from pydantic import AliasChoices, Field, validator
+from pydantic_settings import BaseSettings, NoDecode
 
 
 class ModelConfig(BaseSettings):
@@ -41,12 +42,38 @@ class APISettings(BaseSettings):
     host: str = Field(default="0.0.0.0")
     port: int = Field(default=8000, ge=1, le=65535)
     workers: int = Field(default=1, ge=1, le=8)
-    cors_origins: List[str] = Field(default=["*"])
+    cors_origins: Annotated[List[str], NoDecode] = Field(
+        default=["*"],
+        validation_alias=AliasChoices("API__CORS_ORIGINS", "CORS_ORIGINS")
+    )
     enable_docs: bool = Field(default=True)
     
     # Authentication
-    enable_auth: bool = Field(default=False)
-    api_key: Optional[str] = Field(default=None)
+    enable_auth: bool = Field(
+        default=False,
+        validation_alias=AliasChoices("API__ENABLE_AUTH", "ENABLE_AUTH")
+    )
+    api_key: Optional[str] = Field(
+        default=None,
+        validation_alias=AliasChoices("API__API_KEY", "FRAMEWORK_API_KEY", "API_KEY")
+    )
+
+    @validator('cors_origins', pre=True)
+    def parse_cors_origins(cls, v):
+        """Support JSON array or comma-delimited CORS origins."""
+        if isinstance(v, str):
+            value = v.strip()
+            if not value:
+                return ["*"]
+            if value.startswith("["):
+                try:
+                    parsed = json.loads(value)
+                    if isinstance(parsed, list):
+                        return parsed
+                except json.JSONDecodeError:
+                    pass
+            return [origin.strip() for origin in value.split(",") if origin.strip()]
+        return v
     
     @validator('api_key')
     def validate_api_key(cls, v, values):
@@ -95,6 +122,35 @@ class ResourceLimits(BaseSettings):
     request_rate_limit: int = Field(default=60, ge=1, le=1000)  # per minute
 
 
+class AutomationSettings(BaseSettings):
+    """Autonomy and manual-approval controls."""
+
+    approval_scope: str = Field(
+        default="money,brand,legal",
+        validation_alias=AliasChoices("AUTOMATION__APPROVAL_SCOPE", "APPROVAL_SCOPE")
+    )
+    auto_retry_max_attempts: int = Field(
+        default=3,
+        ge=0,
+        le=10,
+        validation_alias=AliasChoices("AUTOMATION__AUTO_RETRY_MAX_ATTEMPTS", "AUTO_RETRY_MAX_ATTEMPTS")
+    )
+    auto_retry_backoff_ms: int = Field(
+        default=2000,
+        ge=0,
+        le=60000,
+        validation_alias=AliasChoices("AUTOMATION__AUTO_RETRY_BACKOFF_MS", "AUTO_RETRY_BACKOFF_MS")
+    )
+    daily_digest_only: bool = Field(
+        default=True,
+        validation_alias=AliasChoices("AUTOMATION__DAILY_DIGEST_ONLY", "DAILY_DIGEST_ONLY")
+    )
+    auto_fallback_models: bool = Field(
+        default=True,
+        validation_alias=AliasChoices("AUTOMATION__AUTO_FALLBACK_MODELS", "AUTO_FALLBACK_MODELS")
+    )
+
+
 class Settings(BaseSettings):
     """Main settings class combining all configuration sections."""
     
@@ -110,6 +166,7 @@ class Settings(BaseSettings):
     logging: LoggingSettings = Field(default_factory=LoggingSettings)
     features: FeatureFlags = Field(default_factory=FeatureFlags)
     limits: ResourceLimits = Field(default_factory=ResourceLimits)
+    automation: AutomationSettings = Field(default_factory=AutomationSettings)
     
     # Model configurations
     models: Dict[str, ModelConfig] = Field(default_factory=lambda: {
@@ -237,6 +294,11 @@ def setup_legacy_env_vars():
     os.environ['USE_MOCK_KB'] = str(settings.features.use_mock_kb).lower()
     os.environ['DEBUG_MODE'] = str(settings.features.debug_mode).lower()
     os.environ['ENABLE_AUTH'] = str(settings.api.enable_auth).lower()
+    os.environ['APPROVAL_SCOPE'] = settings.automation.approval_scope
+    os.environ['AUTO_RETRY_MAX_ATTEMPTS'] = str(settings.automation.auto_retry_max_attempts)
+    os.environ['AUTO_RETRY_BACKOFF_MS'] = str(settings.automation.auto_retry_backoff_ms)
+    os.environ['DAILY_DIGEST_ONLY'] = str(settings.automation.daily_digest_only).lower()
+    os.environ['AUTO_FALLBACK_MODELS'] = str(settings.automation.auto_fallback_models).lower()
     
     if settings.api.api_key:
         os.environ['FRAMEWORK_API_KEY'] = settings.api.api_key

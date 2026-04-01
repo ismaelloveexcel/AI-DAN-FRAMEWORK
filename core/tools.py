@@ -1030,8 +1030,8 @@ class N8NMCPTool(BaseTool):
     n8n_mcp_token: str = os.getenv("N8N_MCP_TOKEN", "")
     n8n_host: str = os.getenv("N8N_HOST", "https://localhost")
 
-    def _run(self, method: str, params: Dict[str, Any]) -> str:
-        """Execute an n8n operation via MCP protocol (JSON-RPC over HTTP)"""
+    def _execute_rpc(self, method: str, params: Dict[str, Any]) -> str:
+        """Execute an n8n operation via MCP protocol (JSON-RPC over HTTP)."""
         request_id = str(uuid.uuid4())
 
         # n8n MCP uses JSON-RPC 2.0 format
@@ -1081,7 +1081,14 @@ class N8NMCPTool(BaseTool):
                 except json.JSONDecodeError:
                     return f"Could not parse n8n MCP response: {response_text[:200]}"
 
-            logger.info(f"n8n MCP Response: {json.dumps(result_data)[:200]}...")
+            try:
+                preview = json.dumps(result_data)[:200]
+            except TypeError:
+                preview = str(result_data)[:200]
+            logger.info(f"n8n MCP Response: {preview}...")
+
+            if not isinstance(result_data, dict):
+                return str(result_data)
 
             if "error" in result_data:
                 return f"n8n MCP Error: {result_data['error']}"
@@ -1091,13 +1098,22 @@ class N8NMCPTool(BaseTool):
             logger.error(f"Error calling n8n MCP: {e}")
             return f"Error calling n8n MCP: {e}"
 
+    def _run(self, method: str, params: Dict[str, Any]) -> str:
+        """
+        Backward-compatible passthrough to execute arbitrary MCP JSON-RPC calls.
+
+        Subclasses that override `_run` for tool-specific behavior should use
+        `call_tool` / `list_tools`, which bypass this override and avoid recursion.
+        """
+        return self._execute_rpc(method, params)
+
     def list_tools(self) -> str:
         """List available tools/workflows from n8n MCP server"""
-        return self._run("tools/list", {})
+        return self._execute_rpc("tools/list", {})
 
     def call_tool(self, tool_name: str, arguments: Dict[str, Any]) -> str:
         """Call a specific tool exposed by n8n MCP"""
-        return self._run("tools/call", {
+        return self._execute_rpc("tools/call", {
             "name": tool_name,
             "arguments": arguments
         })
@@ -1105,7 +1121,7 @@ class N8NMCPTool(BaseTool):
 
 class N8NTriggerWorkflowTool(N8NMCPTool):
     """Tool for executing n8n workflows via MCP"""
-    name: str = "n8n Execute Workflow Tool"
+    name: str = "n8n Trigger Workflow Tool"
     description: str = (
         "Executes an n8n workflow by ID. First use search_workflows to find "
         "workflows, then get_workflow_details for input schema."
@@ -1113,15 +1129,22 @@ class N8NTriggerWorkflowTool(N8NMCPTool):
 
     def _run(self, workflow_id: str, input_data: Optional[Dict[str, Any]] = None) -> str:
         """Execute an n8n workflow via MCP"""
-        return self.call_tool("execute_workflow", {
-            "workflowId": workflow_id,
-            "inputData": input_data or {}
-        })
+        return N8NMCPTool._run(
+            self,
+            "tools/call",
+            {
+                "name": "execute_workflow",
+                "arguments": {
+                    "workflowId": workflow_id,
+                    "inputData": input_data or {},
+                },
+            },
+        )
 
 
 class N8NListWorkflowsTool(N8NMCPTool):
     """Tool for searching n8n workflows via MCP"""
-    name: str = "n8n Search Workflows Tool"
+    name: str = "n8n List Workflows Tool"
     description: str = (
         "Searches for n8n workflows. Use query parameter to filter by name/description."
     )
@@ -1157,17 +1180,39 @@ class N8NSalesAutomationTool(N8NMCPTool):
     name: str = "n8n Sales Automation Tool"
     description: str = (
         "Triggers sales automation workflows in n8n via MCP. "
-        "First use list_tools() to discover available sales workflows, "
-        "then call them with appropriate data."
+        "First use list_tools() to discover available sales workflows "
+        "(e.g. nurture_lead), then call them with appropriate data."
     )
 
-    def _run(self, workflow_name: str, lead_data: Dict[str, Any]) -> str:
-        """Trigger a sales workflow via n8n MCP"""
-        # Call the workflow tool directly via MCP
-        return self.call_tool(workflow_name, {
-            "action": "sales",
-            "data": lead_data
-        })
+    workflow_map: Dict[str, str] = {
+        "nurture_lead": "nurture_lead",
+        "qualify_lead": "qualify_lead",
+        "score_lead": "score_lead",
+    }
+
+    def _run(
+        self,
+        workflow_name: str = "",
+        lead_data: Optional[Dict[str, Any]] = None,
+        action: Optional[str] = None,
+    ) -> str:
+        """Trigger a sales workflow via n8n MCP."""
+        if action and not workflow_name:
+            mapped = self.workflow_map.get(action)
+            if not mapped:
+                return f"Unknown or unconfigured sales action: {action}"
+            workflow_name = mapped
+
+        if not workflow_name:
+            return "Unknown or unconfigured sales action: missing workflow_name"
+
+        return self.call_tool(
+            workflow_name,
+            {
+                "action": "sales",
+                "data": lead_data or {},
+            },
+        )
 
     def discover_sales_workflows(self) -> str:
         """Discover available sales workflows from n8n MCP"""
@@ -1247,8 +1292,8 @@ def create_mock_tool(tool_name: str, tool_description: str, func: Optional[Calla
     
     # Fallback to dictionary format
     return {
-        "name": name,
-        "description": description,
+        "name": tool_name,
+        "description": tool_description,
         "func": func
     }
 
