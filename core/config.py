@@ -1,14 +1,15 @@
 """
-Centralized Configuration Management for the Agentic Framework.
+Centralized Configuration Management for AIDAN-OS.
 
-This module provides type-safe, validated configuration using Pydantic.
-All environment variables and settings are defined here.
+Uses pydantic BaseModel for schema definitions.
+Note: env-var loading is handled via os.environ.get() directly since
+pydantic-settings is not a dependency of AIDAN-OS.
 """
 
 import os
 from typing import Dict, Optional, List, Literal
 from pydantic import Field, validator
-from pydantic_settings import BaseSettings
+from pydantic import BaseModel as BaseSettings  # alias: env vars read manually via os.environ
 
 
 class ModelConfig(BaseSettings):
