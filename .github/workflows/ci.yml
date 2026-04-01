@@ -38,8 +38,10 @@ jobs:
     - name: Run tests
       env:
         USE_MOCK_KB: "true"
+        ENABLE_AUTH: "true"
+        FRAMEWORK_API_KEY: "ci-test-key"
       run: |
-        pytest test_framework.py -v --tb=short
+        pytest test_framework.py tests/test_n8n_integration.py -v --tb=short
 
   lint:
     runs-on: ubuntu-latest
@@ -59,15 +61,15 @@ jobs:
 
     - name: Lint with pylint
       run: |
-        pylint agents/ core/ tools/ --disable=C0111,R0903,W0223,C0114,C0115,C0116,R0801,W0612,W0611,E0401,C0301 --exit-zero
+        pylint agents/ core/ tools/ --disable=C0111,R0903,W0223,C0114,C0115,C0116,R0801,W0612,W0611,E0401,C0301
 
     - name: Format check with black
       run: |
-        black --check agents/ core/ tools/ --line-length 120 || true
+        black --check agents/ core/ tools/ --line-length 120
 
     - name: Sort imports with isort
       run: |
-        isort --check-only agents/ core/ tools/ || true
+        isort --check-only agents/ core/ tools/
 
   docker:
     runs-on: ubuntu-latest
@@ -130,5 +132,5 @@ jobs:
         scan-type: 'fs'
         scan-ref: '.'
         format: 'table'
-        exit-code: '0'
+        exit-code: '1'
         severity: 'CRITICAL,HIGH'
