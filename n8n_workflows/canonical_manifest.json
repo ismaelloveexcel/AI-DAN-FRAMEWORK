@@ -1,0 +1,202 @@
+{
+  "description": "Canonical active n8n workflows for production imports. Archived variants under n8n_workflows/archive are intentionally excluded.",
+  "workflow_count": 49,
+  "workflows": [
+    {
+      "path": "00_test_api_connection.json",
+      "sha256": "9ab51d9b82413f29372d1fd1e53f989dcb6fbb61d6eb410102475891125a0ccd"
+    },
+    {
+      "path": "10_customer_department_workflow.json",
+      "sha256": "751de686c2864c1a2e0f424ebced727fd6b53edff91dd393b638e3dcf8db0549"
+    },
+    {
+      "path": "11_backoffice_department_workflow.json",
+      "sha256": "1fa802d11f2e0c2d67bd0b6d9b36cc290f15f137b54d548a87dc81989aaded68"
+    },
+    {
+      "path": "12_security_department_workflow.json",
+      "sha256": "70889dc6c9ac73e7093c21b7ab199cba29c44e83f84f25c30b339b2a44ded877"
+    },
+    {
+      "path": "13_error_handling_workflow.json",
+      "sha256": "0ab6e54bbbff5780a834a79c4d8717edee49d76427717f73826887913add7855"
+    },
+    {
+      "path": "14_monitoring_logging_workflow.json",
+      "sha256": "39dd7ff64442920acff540070a1c16375bf628e219d50c1b3f3f29480f521bf4"
+    },
+    {
+      "path": "15_api_bridge_k8_connection.json",
+      "sha256": "a4e1864b87c426ccefaa88615cc2b9b3fba4591f551c9c78cbd59c3cd73068a3"
+    },
+    {
+      "path": "1_main_api_workflow.json",
+      "sha256": "68990a0a1101e54c9962b4925fefbfd993df0e025abda3e75a47c5c3a5e3cb40"
+    },
+    {
+      "path": "2_chief_ai_agent_workflow.json",
+      "sha256": "4e86b0dd39dad324d7cc48da0d0d4b75b48712b55899090d81746863e74636a8"
+    },
+    {
+      "path": "3_sales_department_workflow.json",
+      "sha256": "3f5a1aa2905385aebd845653a7657de07bd78bac104c67f902e07482a8fd3cb9"
+    },
+    {
+      "path": "4_outbound_sales_manager_workflow.json",
+      "sha256": "f4fb65811e9f879a56100da735e83a4d3ac26af8d853a953f2d06caf3fb72c1a"
+    },
+    {
+      "path": "5_knowledge_base_integration_workflow.json",
+      "sha256": "e889a746498a8e4bffd2a04a5224bed465739216b77ac319aee85a157b6d5fa2"
+    },
+    {
+      "path": "6_mcp_integration_workflow.json",
+      "sha256": "b7e1d142a0592252135ccd0b0d5c9394d07bdd87e7bb6b47ae038696398dbe42"
+    },
+    {
+      "path": "7_inbound_sales_manager_workflow.json",
+      "sha256": "18f7d2282cdf00c5cc391f53bb854c9c8149851b28b17eb0ab21746cb67d392d"
+    },
+    {
+      "path": "8_marketing_department_workflow.json",
+      "sha256": "2c833736344267e7fec12cbb774a1c5a00fdbe858351bb7071ea49ba3eed1caf"
+    },
+    {
+      "path": "9_engineering_department_workflow.json",
+      "sha256": "dd1af1bb306fdca39a5d389ffb8d78de3070b1b21dcf9dc983d693cd407cc4ae"
+    },
+    {
+      "path": "MAIN_API_GATEWAY_WEBHOOK.json",
+      "sha256": "aa38fee34bd7b5d21da05c473112af5d5fed6b1eddda08bf62606e74cc5a00a9"
+    },
+    {
+      "path": "NEW_CLIENT_ASSESSMENT_TEMPLATE.json",
+      "sha256": "a3b21f1d455f5a75b58a8a587b0a52fc0795c278a0e54e0cff5a66ad949e088d"
+    },
+    {
+      "path": "NEW_CLIENT_ASSESSMENT_TEMPLATE_WITH_RESEND.json",
+      "sha256": "d207e70ec58ec672ff6d6858d5a1ba52fb7b45fc8928f347a14751844602c10e"
+    },
+    {
+      "path": "NEW_CLIENT_ASSESSMENT_TEMPLATE_WITH_RESEND_HARDCODED.json",
+      "sha256": "544849632c85ea03e297cdc41e9ceda72fccdac080d16cf813ee6a04369ee1f9"
+    },
+    {
+      "path": "PHASE5_ASSESSMENT_WITH_PDF_CRM.json",
+      "sha256": "1dcf785ce176178761910dc61fc942dc72ef22678af9b48902c20a7e3c23d226"
+    },
+    {
+      "path": "PHASE5_NURTURE_EMAIL_SENDER.json",
+      "sha256": "ce043cd4dab3cc71780bb41ae79fa13cb341d339adf5c986fcd980a3e2a818d9"
+    },
+    {
+      "path": "PHASE5_NURTURING_SEQUENCE.json",
+      "sha256": "8124c1643297d3d0a45de80abb8d91b5591e0188204461e9735eabefe37e8fd9"
+    },
+    {
+      "path": "PHASE5_PROPOSAL_APPROVAL_WEBHOOK.json",
+      "sha256": "2209221bc4cf76419abc76a5fbcad7ec51dd9436e5e87d85b88d4e13880f83bc"
+    },
+    {
+      "path": "SUPABASE_NODE_TEMPLATE.json",
+      "sha256": "c88db9b020d9ba855b184f608108ca547c93cb8fe9b6dfd3d9f18e3b5f4a330b"
+    },
+    {
+      "path": "TEST_CORRECT_PATTERN.json",
+      "sha256": "1cb5799f9033bb676a4b05db77e90565ee3eeb1975284f77ec7aa11bbe442a99"
+    },
+    {
+      "path": "TEST_ENVIRONMENT_VARIABLES.json",
+      "sha256": "b8a85fe02f3d73f447b1de37e61284f0ac52fc5300cc4a1cb1cda7a646e5689f"
+    },
+    {
+      "path": "UNIFIED_WORKFLOW_PATTERN.json",
+      "sha256": "f38dd374fdfe2acbff4553b6d8a59b8eff2333317dedea6822431b42a4661651"
+    },
+    {
+      "path": "all_departments_integration.json",
+      "sha256": "cffe5348303b346c262b828031b4b6d6d9f401856b6adedf99729e86f9b60ec1"
+    },
+    {
+      "path": "all_departments_integration_complete.json",
+      "sha256": "18b88654c7a0607a4a27f89913b308a04f9e0fbf6cea968c0182669a6e4ef8d3"
+    },
+    {
+      "path": "assessment_mcp_enhanced.json",
+      "sha256": "d6a87b5c23273fb3073c64df1d6ebb66d7c4784deb307f70efb17c3ad6fac075"
+    },
+    {
+      "path": "customer_freshdesk_integration.json",
+      "sha256": "6b5b5c83d7d1fa37d17f620e1fa08bc34207ce85d8824f352cae4cafa6a04f2d"
+    },
+    {
+      "path": "department_integrations.json",
+      "sha256": "a5a222a7e5c0bfe50bb07b428a3695bc5e4f98542f8c0dc7000b66af09989fc0"
+    },
+    {
+      "path": "mcp_integration_example.json",
+      "sha256": "0ce52f23e06973c66b715304c5e1ce3f0115be0bd97488a29576725e51b8d313"
+    },
+    {
+      "path": "mvp_integration_tests.json",
+      "sha256": "9ccbccbdb854969f0c11f9a0a2ce653a2bfb7e00aba4286283a5482c6a9efebf"
+    },
+    {
+      "path": "mvp_integration_tests_complete.json",
+      "sha256": "cf3aaf8a951093017182d944bb790094a6ab374c186319ccde15e947b3b3adf4"
+    },
+    {
+      "path": "mvp_integration_tests_http.json",
+      "sha256": "18032f20db8bc966f0a82be30124799b12e6de83992c2d6ddf29dc8c150a0cc9"
+    },
+    {
+      "path": "phase5/PHASE5_ASSESSMENT_WITH_PDF_CRM.json",
+      "sha256": "1dcf785ce176178761910dc61fc942dc72ef22678af9b48902c20a7e3c23d226"
+    },
+    {
+      "path": "phase5/PHASE5_ASSESSMENT_WITH_PDF_CRM_FIXED_V11.json",
+      "sha256": "2c1a1e536fe5fc94895402c7cd162cd84c2e6460840bdf31309279e31d7c0902"
+    },
+    {
+      "path": "phase5/PHASE5_NURTURE_EMAIL_SENDER.json",
+      "sha256": "b1dca3391ab9a1d169a7693ecf07142b98021565313ddb0acf5def06b159932d"
+    },
+    {
+      "path": "phase5/PHASE5_NURTURING_SEQUENCE.json",
+      "sha256": "8124c1643297d3d0a45de80abb8d91b5591e0188204461e9735eabefe37e8fd9"
+    },
+    {
+      "path": "phase5/PHASE5_PROPOSAL_APPROVAL_WEBHOOK.json",
+      "sha256": "2209221bc4cf76419abc76a5fbcad7ec51dd9436e5e87d85b88d4e13880f83bc"
+    },
+    {
+      "path": "production_health_check.json",
+      "sha256": "ff620b4fb6bb3e5d862f18ecee4ba1e4c2223345ef2719d25ff9d589c3d87397"
+    },
+    {
+      "path": "production_health_check_simple.json",
+      "sha256": "a39e2f5893f60ca86f54bc5d64be2aeba6d87e2997e664b74aae0a6d5222de6a"
+    },
+    {
+      "path": "resend_email_template.json",
+      "sha256": "7397a0f4fe65177520255616c7e03ef7fe0bee936d73c939136e26c6f204cd5e"
+    },
+    {
+      "path": "sales_hubspot_integration.json",
+      "sha256": "aaede2b8a750e08184a529dea81b57e97dd1a62602679a2d7217f7af1fb513dc"
+    },
+    {
+      "path": "simple_api_test.json",
+      "sha256": "bf4f251b34b9355f825d62853070620b2cb6efac9e8c9fbd2158f46fac586475"
+    },
+    {
+      "path": "supabase_test.json",
+      "sha256": "ce95d645f32c57e334629270925d04295ff096a8f1543f66848c84b44a382326"
+    },
+    {
+      "path": "webhook_diagnostic_test.json",
+      "sha256": "f38a78032c836037fd5451e882311a388fd9d3fdd274b8cbac949d44127a2917"
+    }
+  ]
+}

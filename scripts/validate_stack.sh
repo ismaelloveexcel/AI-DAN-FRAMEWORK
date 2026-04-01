@@ -36,7 +36,10 @@ for workflow in "${required_workflows[@]}"; do
   fi
 done
 
+echo "==> Verifying canonical workflow manifest hashes"
+python3 scripts/validate_workflow_manifest.py
+
 echo "==> Running test suite"
-pytest test_framework.py tests/test_n8n_integration.py tests/test_policy.py -v --tb=short
+python3 -m pytest test_framework.py tests/test_n8n_integration.py tests/test_policy.py tests/test_api_config.py tests/test_operator_controls.py -v --tb=short
 
 echo "==> Validation complete"
