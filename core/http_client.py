@@ -31,33 +31,37 @@ class HTTPClientManager:
     def get_async_client(self) -> httpx.AsyncClient:
         """Get or create the async HTTP client with connection pooling."""
         if self._async_client is None:
-            self._async_client = httpx.AsyncClient(
-                timeout=httpx.Timeout(30.0, connect=5.0),
-                limits=httpx.Limits(
-                    max_connections=100,
-                    max_keepalive_connections=20,
-                    keepalive_expiry=30.0
-                ),
-                http2=True,  # Enable HTTP/2 for better performance
-                follow_redirects=True
-            )
-            logger.info("Async HTTP client initialized with connection pooling")
+            with self._lock:
+                if self._async_client is None:
+                    self._async_client = httpx.AsyncClient(
+                        timeout=httpx.Timeout(30.0, connect=5.0),
+                        limits=httpx.Limits(
+                            max_connections=100,
+                            max_keepalive_connections=20,
+                            keepalive_expiry=30.0
+                        ),
+                        http2=True,  # Enable HTTP/2 for better performance
+                        follow_redirects=True
+                    )
+                    logger.info("Async HTTP client initialized with connection pooling")
         return self._async_client
     
     def get_sync_client(self) -> httpx.Client:
         """Get or create the sync HTTP client with connection pooling."""
         if self._sync_client is None:
-            self._sync_client = httpx.Client(
-                timeout=httpx.Timeout(30.0, connect=5.0),
-                limits=httpx.Limits(
-                    max_connections=100,
-                    max_keepalive_connections=20,
-                    keepalive_expiry=30.0
-                ),
-                http2=True,
-                follow_redirects=True
-            )
-            logger.info("Sync HTTP client initialized with connection pooling")
+            with self._lock:
+                if self._sync_client is None:
+                    self._sync_client = httpx.Client(
+                        timeout=httpx.Timeout(30.0, connect=5.0),
+                        limits=httpx.Limits(
+                            max_connections=100,
+                            max_keepalive_connections=20,
+                            keepalive_expiry=30.0
+                        ),
+                        http2=True,
+                        follow_redirects=True
+                    )
+                    logger.info("Sync HTTP client initialized with connection pooling")
         return self._sync_client
     
     async def close_async_client(self):
